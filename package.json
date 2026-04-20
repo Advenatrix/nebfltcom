@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:create": "psql $DATABASE_URL -f scripts/001_create_schema.sql",
+    "db:seed": "psql $DATABASE_URL -f scripts/002_seed.sql",
+    "db:buildings": "psql $DATABASE_URL -f scripts/003_buildings_and_owners.sql",
+    "db:setup": "npm run db:create && npm run db:seed && npm run db:buildings"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
