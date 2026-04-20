@@ -35,6 +35,9 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
   const [gates, setGates] = useState<Gate[]>([])
   const [loading, setLoading] = useState(true)
   const [hoveredSystemId, setHoveredSystemId] = useState<number | null>(null)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,6 +99,8 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
   let clickTimeout: NodeJS.Timeout
 
   const handleSystemClick = (system: StarSystem) => {
+    if (isDragging) return // Don't select if we were dragging
+
     const now = Date.now()
     const timeSinceLastClick = now - lastClickTime.current
 
@@ -111,8 +116,41 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
     lastClickTime.current = now
   }
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only pan with middle mouse or if right click
+    if (e.button === 1 || e.button === 2) {
+      setIsDragging(true)
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
+    }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && (e.buttons === 4 || e.buttons === 2)) {
+      setPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      })
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleWheel = (e: React.WheelEvent) => {
+    // Scroll position is already handled by browser, but we can add zoom later if needed
+  }
+
   return (
-    <div className="w-full h-full bg-gradient-to-br from-black via-slate-900 to-black border border-cyan-500/30 overflow-hidden relative">
+    <div 
+      className="w-full h-full bg-gradient-to-br from-black via-slate-900 to-black border border-cyan-500/30 overflow-hidden relative cursor-grab active:cursor-grabbing"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* Grid background */}
       <div className="absolute inset-0 opacity-5">
         <svg width="100%" height="100%" className="w-full h-full">
@@ -127,8 +165,9 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
 
       {/* Map */}
       <svg className="absolute inset-0 w-full h-full cursor-pointer" style={{ zIndex: 10 }}>
-        {/* Gates (FTL connections) */}
-        {gates.map((gate) => (
+        <g style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
+          {/* Gates (FTL connections) */}
+          {gates.map((gate) => (
           <g key={`gate-${gate.id}`}>
             <line
               x1={`${scaleX(gate.system_a_x)}%`}
@@ -244,6 +283,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
             </text>
           </g>
         ))}
+        </g>
       </svg>
 
       {/* Top HUD */}
@@ -255,7 +295,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
           </div>
           <div className="text-right">
             <div className="text-cyan-500/60">NAVIGATION</div>
-            <div className="text-cyan-400 text-xs">CLICK TO SELECT • DOUBLE-CLICK TO SCAN</div>
+            <div className="text-cyan-400 text-xs">CLICK TO SELECT • DOUBLE-CLICK TO SCAN • MIDDLE MOUSE TO PAN</div>
           </div>
         </div>
       </div>
