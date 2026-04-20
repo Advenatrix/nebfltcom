@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { StarMap } from "@/components/star-map"
-import { SystemDetail } from "@/components/system-detail"
+import { useState, useEffect } from "react"
+import { GalaxyStarMap } from "@/components/galaxy-star-map"
+import { SystemView } from "@/components/system-view"
+import { FleetWidget } from "@/components/fleet-widget"
+import { Button } from "@/components/ui/button"
 
 interface StarSystem {
   id: number
@@ -14,49 +16,120 @@ interface StarSystem {
   description: string
 }
 
+interface Fleet {
+  id: number
+  name: string
+  faction_id: number
+  current_system_id: number
+  owner_user_id: number | null
+  created_at: string
+  status: 'in_system' | 'traveling'
+  target_system_id?: number
+}
+
 export default function Home() {
   const [selectedSystem, setSelectedSystem] = useState<StarSystem | null>(null)
+  const [viewingSystem, setViewingSystem] = useState<StarSystem | null>(null)
+  const [fleets, setFleets] = useState<Fleet[]>([])
+  const [turn, setTurn] = useState(0)
 
-  const handleSystemSelect = (system: StarSystem) => {
-    setSelectedSystem(system)
+  useEffect(() => {
+    // Fetch fleets
+    const fetchFleets = async () => {
+      try {
+        const response = await fetch('/api/fleets')
+        if (response.ok) {
+          const fleetsData = await response.json()
+          setFleets(fleetsData)
+        }
+      } catch (error) {
+        console.error('Error fetching fleets:', error)
+      }
+    }
+
+    fetchFleets()
+  }, [])
+
+  const handleSystemDoubleClick = (system: StarSystem) => {
+    setViewingSystem(system)
+  }
+
+  const handleBackToGalaxy = () => {
+    setViewingSystem(null)
+  }
+
+  const handleAdvanceTurn = () => {
+    setTurn(prev => prev + 1)
   }
 
   return (
-    <main className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold">Nebulous Fleet Command</h1>
-          <p className="text-muted-foreground">
-            Command your fleets across the galaxy. Navigate star systems and manage your empire.
-          </p>
-        </div>
+    <main className="w-screen h-screen flex bg-black overflow-hidden">
+      {/* Main map area */}
+      <div className="flex-1 flex flex-col relative">
+        {/* Map view */}
+        {viewingSystem ? (
+          <SystemView system={viewingSystem} turn={turn} />
+        ) : (
+          <GalaxyStarMap
+            onSystemSelect={setSelectedSystem}
+            onSystemDoubleClick={handleSystemDoubleClick}
+            selectedSystemId={selectedSystem?.id}
+          />
+        )}
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Galaxy Map */}
-          <div className="space-y-4">
-            <StarMap
-              onSystemSelect={handleSystemSelect}
-              selectedSystemId={selectedSystem?.id}
-            />
-          </div>
-
-          {/* System Details */}
-          <div className="space-y-4">
-            {selectedSystem ? (
-              <SystemDetail system={selectedSystem} />
-            ) : (
-              <div className="flex items-center justify-center h-96 border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                <div className="text-center space-y-2">
-                  <div className="text-2xl">🪐</div>
-                  <div className="text-lg font-medium">Select a Star System</div>
-                  <div className="text-sm text-muted-foreground">
-                    Click on a star in the galaxy map to view its planets
-                  </div>
+        {/* Control HUD - Bottom */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent border-t border-cyan-500/20 p-4 font-mono text-xs">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div>
+                <div className="text-cyan-500/60">CURRENT VIEW</div>
+                <div className="text-cyan-300 font-bold">
+                  {viewingSystem ? `${viewingSystem.name} SYSTEM` : 'GALACTIC MAP'}
                 </div>
               </div>
-            )}
+              {viewingSystem && (
+                <Button
+                  onClick={handleBackToGalaxy}
+                  className="bg-cyan-600 hover:bg-cyan-500 text-black font-mono font-bold px-4 py-1 text-xs h-auto"
+                >
+                  ← RETURN TO GALAXY
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-6">
+              <div>
+                <div className="text-cyan-500/60">TURN</div>
+                <div className="text-cyan-300 font-bold text-lg">{turn}</div>
+              </div>
+              {viewingSystem && (
+                <Button
+                  onClick={handleAdvanceTurn}
+                  className="bg-green-600 hover:bg-green-500 text-black font-mono font-bold px-6 py-2 text-xs h-auto"
+                >
+                  ADVANCE TURN ▶
+                </Button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Back button (top left) */}
+        {viewingSystem && (
+          <div className="absolute top-4 left-4 z-20">
+            <button
+              onClick={handleBackToGalaxy}
+              className="bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500 text-cyan-400 px-3 py-2 font-mono text-xs rounded transition-all"
+            >
+              [ESC] RETURN
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Fleet Widget - Right sidebar */}
+      <div className="w-72 flex-shrink-0">
+        <FleetWidget fleets={fleets} selectedFleetId={selectedSystem?.id} />
       </div>
     </main>
   )

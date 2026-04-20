@@ -32,6 +32,7 @@ interface SystemDetailProps {
 export function SystemDetail({ system }: SystemDetailProps) {
   const [planets, setPlanets] = useState<Planet[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
 
   useEffect(() => {
@@ -40,10 +41,17 @@ export function SystemDetail({ system }: SystemDetailProps) {
         const response = await fetch(`/api/systems/${system.id}/planets`)
         if (response.ok) {
           const planetsData = await response.json()
+          console.log(`Fetched ${planetsData.length} planets for system ${system.id}`)
           setPlanets(planetsData)
+          setError(null)
+        } else {
+          const errorData = await response.json()
+          console.error('Planet fetch error:', errorData)
+          setError(errorData.error || 'Failed to fetch planets')
         }
       } catch (error) {
         console.error('Error fetching planets:', error)
+        setError(error instanceof Error ? error.message : 'Unknown error')
       } finally {
         setLoading(false)
       }
@@ -52,14 +60,8 @@ export function SystemDetail({ system }: SystemDetailProps) {
     fetchPlanets()
   }, [system.id])
 
-  // Animation loop for orbital motion
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(prev => prev + 0.1) // Increment time for animation
-    }, 50) // Update every 50ms for smooth animation
-
-    return () => clearInterval(interval)
-  }, [])
+  // Planets update per turn only - no continuous animation
+  // Call advanceTurn() to progress orbital positions
 
   if (loading) {
     return (
@@ -70,6 +72,22 @@ export function SystemDetail({ system }: SystemDetailProps) {
         <CardContent>
           <div className="flex items-center justify-center h-48">
             <div className="text-lg">Loading planetary data...</div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>{system.name} System</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="text-red-800 font-medium">Error Loading Planets</div>
+            <div className="text-red-700 text-sm mt-1">{error}</div>
           </div>
         </CardContent>
       </Card>

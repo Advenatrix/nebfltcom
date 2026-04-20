@@ -123,3 +123,99 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Futuristic Military Theme */
+@layer components {
+  /* Sci-Fi text effects */
+  .sci-fi-text {
+    @apply font-mono tracking-wider;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  }
+
+  .scan-line {
+    animation: scan 8s linear infinite;
+  }
+
+  @keyframes scan {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  /* Cyan neon glow */
+  .neon-cyan {
+    @apply text-cyan-400;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.6), 0 0 16px rgba(0, 255, 255, 0.3);
+  }
+
+  /* Tactical UI elements */
+  .tactical-panel {
+    @apply bg-slate-950/80 border border-cyan-500/40 rounded;
+    backdrop-filter: blur(8px);
+  }
+
+  .tactical-panel-active {
+    @apply bg-slate-900/90 border border-cyan-400/60;
+    box-shadow: 0 0 16px rgba(0, 255, 255, 0.2);
+  }
+
+  /* Holographic effect */
+  .hologram {
+    animation: flicker 0.15s infinite;
+  }
+
+  @keyframes flicker {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.95;
+    }
+  }
+
+  /* Selection highlight */
+  .system-selected {
+    filter: drop-shadow(0 0 16px rgba(0, 255, 255, 0.8));
+  }
+
+  /* Radar sweep */
+  .radar-sweep {
+    animation: sweep 3s linear infinite;
+    transform-origin: center;
+  }
+
+  @keyframes sweep {
+    0% {
+      opacity: 0;
+      transform: rotate(0deg);
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: rotate(360deg);
+    }
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 255, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 255, 0.8);
+}
