@@ -21,7 +21,7 @@ This project uses Neon (free tier PostgreSQL) for the database.
 4. Update `.env.local`:
 
 ```bash
-DATABASE_URL="your_neon_connection_string_here"
+DATABASE_URL="https://ep-weathered-union-aoel6j7y.neonauth.c-2.ap-southeast-1.aws.neon.tech/neondb/auth"
 ```
 
 ### 2. Install Dependencies
