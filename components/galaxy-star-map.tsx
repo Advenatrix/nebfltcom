@@ -38,6 +38,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,18 +66,18 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
 
   if (loading) {
     return (
-      <div className="w-full h-full bg-black flex items-center justify-center border border-cyan-500/30">
-        <div className="text-cyan-400 font-mono animate-pulse">SCANNING GALAXY...</div>
+      <div className="w-full h-full bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950 flex items-center justify-center border border-slate-700/50">
+        <div className="text-blue-400 font-mono animate-pulse">SCANNING GALAXY...</div>
       </div>
     )
   }
 
   if (starSystems.length === 0) {
     return (
-      <div className="w-full h-full bg-black flex items-center justify-center border border-cyan-500/30">
+      <div className="w-full h-full bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950 flex items-center justify-center border border-slate-700/50">
         <div className="text-center space-y-3">
           <div className="text-red-500 font-mono font-bold">⚠ SIGNAL LOST</div>
-          <div className="text-cyan-500/50 font-mono text-sm">Database connection required</div>
+          <div className="text-slate-400/70 font-mono text-sm">Database connection required</div>
         </div>
       </div>
     )
@@ -138,12 +139,31 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
   }
 
   const handleWheel = (e: React.WheelEvent) => {
-    // Scroll position is already handled by browser, but we can add zoom later if needed
+    e.preventDefault()
+    const container = e.currentTarget as HTMLDivElement
+    const rect = container.getBoundingClientRect()
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+
+    const zoomSpeed = 0.1
+    const direction = e.deltaY > 0 ? -1 : 1
+    const newZoom = Math.max(0.5, Math.min(3, zoom + direction * zoomSpeed))
+    
+    // Zoom towards the center of the viewport instead of the cursor
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+    
+    const zoomFactor = newZoom / zoom
+    const newPanX = centerX - (centerX - pan.x) * zoomFactor
+    const newPanY = centerY - (centerY - pan.y) * zoomFactor
+    
+    setZoom(newZoom)
+    setPan({ x: newPanX, y: newPanY })
   }
 
   return (
     <div 
-      className="w-full h-full bg-gradient-to-br from-black via-slate-900 to-black border border-cyan-500/30 overflow-hidden relative cursor-grab active:cursor-grabbing"
+      className="w-full h-full bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950 border border-slate-700/50 overflow-hidden relative cursor-grab active:cursor-grabbing"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -151,6 +171,20 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
     >
+      {/* Starfield background */}
+      <div className="absolute inset-0 opacity-30" style={{
+        backgroundImage: `
+          radial-gradient(1px 1px at 20px 30px, white, rgba(255,255,255,0)),
+          radial-gradient(1px 1px at 40px 70px, white, rgba(255,255,255,0)),
+          radial-gradient(2px 2px at 50px 50px, rgba(100, 200, 255, 0.8), rgba(255,255,255,0)),
+          radial-gradient(1px 1px at 130px 80px, white, rgba(255,255,255,0)),
+          radial-gradient(1px 1px at 90px 10px, white, rgba(255,255,255,0)),
+          radial-gradient(1.5px 1.5px at 130px 40px, white, rgba(255,255,255,0))
+        `,
+        backgroundSize: '200px 200px, 300px 300px, 250px 250px, 350px 350px, 400px 400px, 325px 325px',
+        backgroundPosition: '0 0, 20px 30px, 60px 70px, 130px 80px, 90px 10px, 130px 40px'
+      }} />
+
       {/* Grid background */}
       <div className="absolute inset-0 opacity-5">
         <svg width="100%" height="100%" className="w-full h-full">
@@ -165,7 +199,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
 
       {/* Map */}
       <svg className="absolute inset-0 w-full h-full cursor-pointer" style={{ zIndex: 10 }}>
-        <g style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
+        <g style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
           {/* Gates (FTL connections) */}
           {gates.map((gate) => (
           <g key={`gate-${gate.id}`}>
@@ -174,18 +208,18 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
               y1={`${scaleY(gate.system_a_y)}%`}
               x2={`${scaleX(gate.system_b_x)}%`}
               y2={`${scaleY(gate.system_b_y)}%`}
-              stroke="#06b6d4"
+              stroke="#3b82f6"
               strokeWidth="1.5"
-              opacity="0.4"
+              opacity="0.5"
               strokeDasharray="5,5"
-              className="hover:opacity-70 transition-opacity"
+              className="hover:opacity-80 transition-opacity"
             />
             {/* Gate label at midpoint */}
             <text
               x={`${(scaleX(gate.system_a_x) + scaleX(gate.system_b_x)) / 2}%`}
               y={`${(scaleY(gate.system_a_y) + scaleY(gate.system_b_y)) / 2}%`}
               textAnchor="middle"
-              className="fill-cyan-500/30 font-mono text-xs"
+              className="fill-blue-400/40 font-mono text-xs"
               style={{ fontSize: '8px', pointerEvents: 'none' }}
             >
               ◆
@@ -210,9 +244,9 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
                   cy={`${scaleY(system.y)}%`}
                   r="25"
                   fill="none"
-                  stroke="#06b6d4"
-                  strokeWidth="1"
-                  opacity="0.3"
+                  stroke="#3b82f6"
+                  strokeWidth="1.5"
+                  opacity="0.4"
                   className="animate-pulse"
                 />
                 <circle
@@ -220,7 +254,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
                   cy={`${scaleY(system.y)}%`}
                   r="35"
                   fill="none"
-                  stroke="#06b6d4"
+                  stroke="#3b82f6"
                   strokeWidth="0.5"
                   opacity="0.2"
                 />
@@ -233,8 +267,8 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
               cy={`${scaleY(system.y)}%`}
               r={selectedSystemId === system.id ? "12" : "8"}
               fill={system.star_color}
-              stroke={selectedSystemId === system.id ? "#fbbf24" : "#06b6d4"}
-              strokeWidth={selectedSystemId === system.id ? "2" : "1"}
+              stroke={selectedSystemId === system.id ? "#fbbf24" : "#60a5fa"}
+              strokeWidth={selectedSystemId === system.id ? "2" : "1.5"}
               className="transition-all drop-shadow-lg cursor-pointer"
               style={{
                 filter: `drop-shadow(0 0 ${selectedSystemId === system.id ? '12px' : '6px'} ${system.star_color})`
@@ -248,11 +282,9 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
                 cy={`${scaleY(system.y)}%`}
                 r="8"
                 fill="none"
-                stroke="#06b6d4"
-                strokeWidth="1.5"
-                opacity="0.6"
-                className="animate-spin"
-                style={{ animationDuration: '3s' }}
+                stroke="#3b82f6"
+                strokeWidth="2"
+                opacity="0.8"
               />
             )}
 
@@ -261,11 +293,11 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
               x={`${scaleX(system.x)}%`}
               y={`${scaleY(system.y) + 4}%`}
               textAnchor="middle"
-              className="fill-cyan-300 font-mono font-bold"
+              className="fill-blue-300 font-mono font-bold"
               style={{ 
                 fontSize: '10px',
                 pointerEvents: 'none',
-                textShadow: '0 0 4px rgba(0,255,255,0.5)'
+                textShadow: '0 0 4px rgba(147, 197, 253, 0.4)'
               }}
             >
               {system.name}
@@ -276,7 +308,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
               x={`${scaleX(system.x)}%`}
               y={`${scaleY(system.y) + 12}%`}
               textAnchor="middle"
-              className="fill-cyan-500/60 font-mono"
+              className="fill-blue-400/60 font-mono"
               style={{ fontSize: '7px', pointerEvents: 'none' }}
             >
               [{system.star_type}]
@@ -287,28 +319,28 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
       </svg>
 
       {/* Top HUD */}
-      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent border-b border-cyan-500/20 pointer-events-none font-mono text-xs">
-        <div className="flex justify-between items-start">
+      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-slate-950/80 to-transparent border-b border-slate-700/30 pointer-events-none font-mono text-xs">
+        <div className="flex justify-between">
           <div>
-            <div className="text-cyan-400 font-bold">GALACTIC MAP</div>
-            <div className="text-cyan-500/60">STAR SYSTEMS {starSystems.length}</div>
+            <div className="text-blue-300 font-bold">GALACTIC MAP</div>
+            <div className="text-slate-400/70">STAR SYSTEMS {starSystems.length}</div>
           </div>
           <div className="text-right">
-            <div className="text-cyan-500/60">NAVIGATION</div>
-            <div className="text-cyan-400 text-xs">CLICK TO SELECT • DOUBLE-CLICK TO SCAN • MIDDLE MOUSE TO PAN</div>
+            <div className="text-slate-400/70">NAVIGATION</div>
+            <div className="text-blue-300/80 text-xs">CLICK → SELECT • DBLCLICK → SCAN • SCROLL → ZOOM</div>
           </div>
         </div>
       </div>
 
       {/* System Info (bottom left) */}
       {selectedSystemId && (
-        <div className="absolute bottom-4 left-4 bg-black/80 border border-cyan-500 p-3 font-mono text-xs max-w-xs pointer-events-none backdrop-blur-sm">
+        <div className="absolute bottom-4 left-4 bg-slate-950/70 border border-slate-700 p-3 font-mono text-xs max-w-xs pointer-events-none backdrop-blur-sm rounded">
           {starSystems.find(s => s.id === selectedSystemId) && (
             <>
-              <div className="text-cyan-400 font-bold mb-2">
+              <div className="text-blue-300 font-bold mb-2">
                 {starSystems.find(s => s.id === selectedSystemId)?.name}
               </div>
-              <div className="text-cyan-500/70 text-xs space-y-1">
+              <div className="text-slate-400/70 text-xs space-y-1">
                 <div>STAR TYPE: {starSystems.find(s => s.id === selectedSystemId)?.star_type}</div>
                 <div>STATUS: SCANNING...</div>
               </div>

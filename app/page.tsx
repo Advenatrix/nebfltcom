@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { GalaxyStarMap } from "@/components/galaxy-star-map"
 import { SystemView } from "@/components/system-view"
 import { FleetWidget } from "@/components/fleet-widget"
+import { FleetShipsList } from "@/components/fleet-ships-list"
 import { Button } from "@/components/ui/button"
 
 interface StarSystem {
@@ -32,6 +33,7 @@ export default function Home() {
   const [viewingSystem, setViewingSystem] = useState<StarSystem | null>(null)
   const [fleets, setFleets] = useState<Fleet[]>([])
   const [turn, setTurn] = useState(0)
+  const [selectedFleetForShips, setSelectedFleetForShips] = useState<Fleet | null>(null)
 
   useEffect(() => {
     // Fetch fleets
@@ -62,74 +64,101 @@ export default function Home() {
     setTurn(prev => prev + 1)
   }
 
+  const handleFleetDoubleClick = (fleet: Fleet) => {
+    setSelectedFleetForShips(fleet)
+  }
+
+  const handleBackFromFleetShips = () => {
+    setSelectedFleetForShips(null)
+  }
+
   return (
-    <main className="w-screen h-screen flex bg-black overflow-hidden">
+    <main className="w-screen h-screen flex bg-slate-950 overflow-hidden">
       {/* Main map area */}
-      <div className="flex-1 flex flex-col relative">
+      <div className="flex-1 flex flex-col relative bg-gradient-to-br from-slate-900 via-slate-950 to-black">
+        {/* Starfield background */}
+        <div className="absolute inset-0 opacity-20" style={{
+          backgroundImage: `
+            radial-gradient(1px 1px at 20px 30px, white, rgba(255,255,255,0)),
+            radial-gradient(1px 1px at 40px 70px, white, rgba(255,255,255,0)),
+            radial-gradient(1.5px 1.5px at 50px 50px, white, rgba(255,255,255,0)),
+            radial-gradient(1px 1px at 130px 80px, white, rgba(255,255,255,0)),
+            radial-gradient(2px 2px at 90px 10px, white, rgba(255,255,255,0)),
+            radial-gradient(1.5px 1.5px at 130px 40px, white, rgba(255,255,255,0))
+          `,
+          backgroundSize: '200px 200px, 300px 300px, 250px 250px, 350px 350px, 400px 400px, 325px 325px',
+          backgroundPosition: '0 0, 20px 30px, 60px 70px, 130px 80px, 90px 10px, 130px 40px'
+        }} />
+
         {/* Map view */}
-        {viewingSystem ? (
-          <SystemView system={viewingSystem} turn={turn} />
-        ) : (
-          <GalaxyStarMap
-            onSystemSelect={setSelectedSystem}
-            onSystemDoubleClick={handleSystemDoubleClick}
-            selectedSystemId={selectedSystem?.id}
-          />
+        <div className="flex-1 relative" style={{ zIndex: 5 }}>
+          {viewingSystem ? (
+            <SystemView system={viewingSystem} turn={turn} />
+          ) : (
+            <GalaxyStarMap
+              onSystemSelect={setSelectedSystem}
+              onSystemDoubleClick={handleSystemDoubleClick}
+              selectedSystemId={selectedSystem?.id}
+            />
+          )}
+        </div>
+
+        {/* Top Left: ESC/Back button */}
+        {viewingSystem && (
+          <div className="absolute top-24 left-6 z-40">
+            <button
+              onClick={handleBackToGalaxy}
+              className="bg-slate-950/70 hover:bg-slate-900 border border-slate-700 text-blue-300 px-4 py-2 font-mono text-sm rounded transition-all"
+            >
+              ← BACK
+            </button>
+          </div>
         )}
 
-        {/* Control HUD - Bottom */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent border-t border-cyan-500/20 p-4 font-mono text-xs">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
+        {/* Top Right: Info Panel */}
+        <div className="absolute top-24 right-6 z-40">
+          <div className="bg-slate-950/60 border border-slate-700 rounded backdrop-blur-sm px-4 py-3">
+            <div className="flex flex-col gap-3">
               <div>
-                <div className="text-cyan-500/60">CURRENT VIEW</div>
-                <div className="text-cyan-300 font-bold">
-                  {viewingSystem ? `${viewingSystem.name} SYSTEM` : 'GALACTIC MAP'}
+                <div className="text-slate-500 font-mono text-xs">VIEWING</div>
+                <div className="text-slate-200 font-mono font-bold text-sm">
+                  {viewingSystem ? viewingSystem.name : 'GALACTIC MAP'}
                 </div>
               </div>
-              {viewingSystem && (
-                <Button
-                  onClick={handleBackToGalaxy}
-                  className="bg-cyan-600 hover:bg-cyan-500 text-black font-mono font-bold px-4 py-1 text-xs h-auto"
-                >
-                  ← RETURN TO GALAXY
-                </Button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-6">
               <div>
-                <div className="text-cyan-500/60">TURN</div>
-                <div className="text-cyan-300 font-bold text-lg">{turn}</div>
+                <div className="text-slate-500 font-mono text-xs">TURN</div>
+                <div className="text-blue-300 font-mono font-bold text-lg">{turn}</div>
               </div>
-              {viewingSystem && (
-                <Button
-                  onClick={handleAdvanceTurn}
-                  className="bg-green-600 hover:bg-green-500 text-black font-mono font-bold px-6 py-2 text-xs h-auto"
-                >
-                  ADVANCE TURN ▶
-                </Button>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Back button (top left) */}
-        {viewingSystem && (
-          <div className="absolute top-4 left-4 z-20">
-            <button
-              onClick={handleBackToGalaxy}
-              className="bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500 text-cyan-400 px-3 py-2 font-mono text-xs rounded transition-all"
-            >
-              [ESC] RETURN
-            </button>
-          </div>
-        )}
+        {/* Bottom Right: End Turn button */}
+        <div className="absolute bottom-6 right-6 z-40">
+          <button
+            onClick={handleAdvanceTurn}
+            className="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-mono font-bold px-6 py-2 text-sm rounded transition-all shadow-lg"
+          >
+            ADVANCE TURN ▼
+          </button>
+        </div>
       </div>
 
       {/* Fleet Widget - Right sidebar */}
       <div className="w-72 flex-shrink-0">
-        <FleetWidget fleets={fleets} selectedFleetId={selectedSystem?.id} />
+        {selectedFleetForShips ? (
+          <FleetShipsList
+            fleetId={selectedFleetForShips.id}
+            fleetName={selectedFleetForShips.name}
+            onBack={handleBackFromFleetShips}
+          />
+        ) : (
+          <FleetWidget
+            fleets={fleets}
+            onFleetDoubleClick={handleFleetDoubleClick}
+            selectedFleetId={selectedSystem?.id}
+          />
+        )}
       </div>
     </main>
   )
