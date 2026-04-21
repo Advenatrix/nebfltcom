@@ -5,6 +5,7 @@ import { GalaxyStarMap } from "@/components/galaxy-star-map"
 import { SystemView } from "@/components/system-view"
 import { FleetWidget } from "@/components/fleet-widget"
 import { FleetShipsList } from "@/components/fleet-ships-list"
+import { FleetSettings } from "@/components/fleet-settings"
 
 interface StarSystem {
   id: number
@@ -28,7 +29,7 @@ interface Fleet {
 }
 
 // ─── Reusable corner-bracket panel decoration ─────────────────────────────────
-function CornerBrackets({ color = "#4a7a50" }: { color?: string }) {
+function CornerBrackets({ color = "#ff8800" }: { color?: string }) {
   const s: React.CSSProperties = { position: "absolute", width: 10, height: 10 }
   const b2 = `2px solid ${color}`
   return (
@@ -45,13 +46,13 @@ function CornerBrackets({ color = "#4a7a50" }: { color?: string }) {
 function FieldRow({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ color: "#3d5c42", fontSize: 9, letterSpacing: "0.2em", marginBottom: 2 }}>
+      <div style={{ color: "#a8c8a8", fontSize: 13, letterSpacing: "0.2em", marginBottom: 4 }}>
         {label}
       </div>
       <div
         style={{
-          color: accent ? "#c8a840" : "#9ab89a",
-          fontSize: accent ? 20 : 12,
+          color: accent ? "#ff8800" : "#d8f0d8",
+          fontSize: accent ? 24 : 18,
           fontWeight: "bold",
           letterSpacing: "0.08em",
           fontFamily: "monospace",
@@ -69,17 +70,19 @@ export default function Home() {
   const [fleets, setFleets]                             = useState<Fleet[]>([])
   const [turn, setTurn]                                 = useState(0)
   const [selectedFleetForShips, setSelectedFleetForShips] = useState<Fleet | null>(null)
+  const [fleetSettingsOpen, setFleetSettingsOpen]     = useState(false)
+
+  const refreshFleets = async () => {
+    try {
+      const response = await fetch("/api/fleets")
+      if (response.ok) setFleets(await response.json())
+    } catch (error) {
+      console.error("Error fetching fleets:", error)
+    }
+  }
 
   useEffect(() => {
-    const fetchFleets = async () => {
-      try {
-        const response = await fetch("/api/fleets")
-        if (response.ok) setFleets(await response.json())
-      } catch (error) {
-        console.error("Error fetching fleets:", error)
-      }
-    }
-    fetchFleets()
+    refreshFleets()
   }, [])
 
   const handleSystemDoubleClick  = (system: StarSystem) => setViewingSystem(system)
@@ -92,11 +95,11 @@ export default function Home() {
   const tok = {
     bg:          "#050905",
     panelBg:     "rgba(4, 9, 5, 0.93)",
-    border:      "#1e3022",
-    borderBright:"#2e5035",
-    textDim:     "#3d5c42",
-    textBase:    "#8ab08a",
-    textHot:     "#c8a840",     // amber — turns, warnings
+    border:      "#3d5c42",
+    borderBright:"#ff8800",
+    textDim:     "#6a8a6a",
+    textBase:    "#a8c8a8",
+    textHot:     "#ff8800",     // orange — turns, warnings
     textGreen:   "#6adc7a",     // phosphor — system-live indicator
     sidebar:     "#060b07",
   }
@@ -148,7 +151,7 @@ export default function Home() {
           style={{
             position: "relative", zIndex: 30,
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "6px 16px",
+            padding: "8px 16px",
             borderBottom: `1px solid ${tok.border}`,
             background: "rgba(3, 7, 4, 0.97)",
           }}
@@ -157,133 +160,137 @@ export default function Home() {
             {/* Live indicator */}
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{
-                display: "inline-block", width: 6, height: 6,
+                display: "inline-block", width: 8, height: 8,
                 background: tok.textGreen,
-                boxShadow: `0 0 6px ${tok.textGreen}`,
+                boxShadow: `0 0 8px ${tok.textGreen}`,
                 animation: "pulse 2s infinite",
               }} />
               <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
-              <span style={{ color: tok.textGreen, fontSize: 9, letterSpacing: "0.25em" }}>SYS.ONLINE</span>
+              <span style={{ color: tok.textGreen, fontSize: 14, letterSpacing: "0.25em" }}>SYS.ONLINE</span>
             </span>
-            <span style={{ color: tok.textDim, fontSize: 9, letterSpacing: "0.2em" }}>
+            <span style={{ color: tok.textDim, fontSize: 14, letterSpacing: "0.2em" }}>
               GALACTIC COMMAND INTERFACE — v2.{String(turn).padStart(3, "0")}
             </span>
+            {viewingSystem && (
+              <button
+                onClick={handleBackToGalaxy}
+                style={{
+                  background: tok.panelBg,
+                  border: `1px solid ${tok.borderBright}`,
+                  borderLeft: `3px solid ${tok.textHot}`,
+                  color: tok.textBase,
+                  padding: "6px 12px",
+                  fontSize: 13,
+                  letterSpacing: "0.2em",
+                  cursor: "pointer",
+                  marginLeft: 16,
+                }}
+              >
+                ← RTN
+              </button>
+            )}
           </div>
-          <span style={{ color: tok.textDim, fontSize: 9, letterSpacing: "0.2em" }}>
+          <span style={{ color: tok.textDim, fontSize: 14, letterSpacing: "0.2em" }}>
             AUTH.VERIFIED // CLEARANCE: SIGMA
           </span>
         </div>
 
-        {/* ── Map viewport ─────────────────────────────────────────────── */}
-        <div style={{ flex: 1, position: "relative", zIndex: 5 }}>
-          {viewingSystem ? (
-            <SystemView system={viewingSystem} turn={turn} />
-          ) : (
-            <GalaxyStarMap
-              onSystemSelect={setSelectedSystem}
-              onSystemDoubleClick={handleSystemDoubleClick}
-              selectedSystemId={selectedSystem?.id}
-            />
-          )}
-        </div>
-
-        {/* ── RTN button — top left ─────────────────────────────────────── */}
-        {viewingSystem && (
-          <div style={{ position: "absolute", top: 52, left: 16, zIndex: 40 }}>
-            <button
-              onClick={handleBackToGalaxy}
-              style={{
-                background: tok.panelBg,
-                border: `1px solid ${tok.borderBright}`,
-                borderLeft: `3px solid ${tok.textBase}`,
-                color: tok.textBase,
-                padding: "6px 14px",
-                fontSize: 10,
-                letterSpacing: "0.22em",
-                cursor: "pointer",
-                transition: "background 0.12s, color 0.12s",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = "#0d1f10"
-                e.currentTarget.style.color = "#b8d8b8"
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = tok.panelBg
-                e.currentTarget.style.color = tok.textBase
-              }}
-            >
-              ← RTN GALACTIC OPS
-            </button>
+        {/* ── Main content area with right panel ───────────────────────────── */}
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          {/* Map viewport */}
+          <div style={{ flex: 1, position: "relative", zIndex: 5 }}>
+            {viewingSystem ? (
+              <SystemView system={viewingSystem} turn={turn} />
+            ) : (
+              <GalaxyStarMap
+                onSystemSelect={setSelectedSystem}
+                onSystemDoubleClick={handleSystemDoubleClick}
+                selectedSystemId={selectedSystem?.id}
+              />
+            )}
           </div>
-        )}
 
-        {/* ── SITREP panel — top right ──────────────────────────────────── */}
-        <div style={{ position: "absolute", top: 52, right: 16, zIndex: 40 }}>
+          {/* SITREP panel - floating - left, stacked on left side */}
           <div
             style={{
-              position: "relative",
-              background: tok.panelBg,
-              border: `1px solid ${tok.border}`,
-              padding: "12px 16px",
-              minWidth: 170,
-              backdropFilter: "blur(4px)",
+              position: "absolute",
+              top:  120,
+              left: 2,
+              width: 180,
+              zIndex: 50,
             }}
           >
-            <CornerBrackets color={tok.textBase} />
-
-            {/* Panel title */}
             <div
               style={{
-                color: tok.textDim, fontSize: 8, letterSpacing: "0.3em",
-                marginBottom: 12, paddingBottom: 6,
-                borderBottom: `1px solid ${tok.border}`,
+                background: tok.panelBg,
+                border: `1px solid ${tok.border}`,
+                padding: "10px 14px",
               }}
             >
-              ▸ SITREP
+              <div
+                style={{
+                  color: tok.textDim, fontSize: 12, letterSpacing: "0.3em",
+                  marginBottom: 10, paddingBottom: 6,
+                  borderBottom: `1px solid ${tok.border}`,
+                }}
+              >
+                ▸ SITREP
+              </div>
+              <FieldRow
+                label="SECTOR"
+                value={viewingSystem ? viewingSystem.name.toUpperCase() : "GALACTIC MAP"}
+              />
+              <FieldRow
+                label="CYCLE"
+                value={String(turn).padStart(4, "0")}
+                accent
+              />
             </div>
 
-            <FieldRow
-              label="SECTOR"
-              value={viewingSystem ? viewingSystem.name.toUpperCase() : "GALACTIC MAP"}
-            />
-            <FieldRow
-              label="CYCLE"
-              value={String(turn).padStart(4, "0")}
-              accent
-            />
-          </div>
-        </div>
+            {/* COMMIT ORDERS button - floating below SITREP */}
+            <button
+              onClick={handleAdvanceTurn}
+              style={{
+                background: "#0d2010",
+                border: `1px solid ${tok.borderBright}`,
+                borderLeft: `3px solid ${tok.textHot}`,
+                color: tok.textBase,
+                padding: "10px 16px",
+                fontSize: 13,
+                letterSpacing: "0.2em",
+                fontWeight: "bold",
+                cursor: "pointer",
+                textTransform: "uppercase",
+                width: "100%",
+                marginTop: 8,
+              }}
+            >
+              COMMIT ORDERS ▶
+            </button>
 
-        {/* ── COMMIT ORDERS — bottom right ─────────────────────────────── */}
-        <div style={{ position: "absolute", bottom: 20, right: 16, zIndex: 40 }}>
-          <button
-            onClick={handleAdvanceTurn}
-            style={{
-              background: "#0d2010",
-              border: `1px solid #3a7040`,
-              borderLeft: `3px solid #6aaa70`,
-              color: "#c0dcc0",
-              padding: "9px 22px",
-              fontSize: 11,
-              letterSpacing: "0.28em",
-              fontWeight: "bold",
-              cursor: "pointer",
-              transition: "background 0.12s, border-color 0.12s, color 0.12s",
-              textTransform: "uppercase",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "#142a18"
-              e.currentTarget.style.borderLeftColor = "#8acc8a"
-              e.currentTarget.style.color = "#daeeda"
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "#0d2010"
-              e.currentTarget.style.borderLeftColor = "#6aaa70"
-              e.currentTarget.style.color = "#c0dcc0"
-            }}
-          >
-            COMMIT ORDERS ▶
-          </button>
+            {/* Selected system info - shows when a system is selected, below COMMIT ORDERS */}
+            {selectedSystem && (
+              <div
+                style={{
+                  background: tok.panelBg,
+                  border: `1px solid ${tok.border}`,
+                  borderLeft: `3px solid ${tok.textHot}`,
+                  padding: "10px 14px",
+                  marginTop: 8,
+                }}
+              >
+                <div style={{ color: tok.textHot, fontSize: 14, fontWeight: "bold", letterSpacing: "0.12em", marginBottom: 6 }}>
+                  {selectedSystem.name.toUpperCase()}
+                </div>
+                <div style={{ color: tok.textBase, fontSize: 12, letterSpacing: "0.15em" }}>
+                  STAR CLASS: {selectedSystem.star_type}
+                </div>
+                <div style={{ color: tok.textBase, fontSize: 12, letterSpacing: "0.15em", marginTop: 4 }}>
+                  STATUS: DESIGNATED ◆
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -303,16 +310,30 @@ export default function Home() {
         {/* Sidebar header strip */}
         <div
           style={{
-            padding: "6px 14px",
+            padding: "8px 14px",
             borderBottom: `1px solid ${tok.border}`,
             display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
             gap: 8,
           }}
         >
-          <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: "0.28em" }}>
+          <span style={{ color: tok.textDim, fontSize: 13, letterSpacing: "0.28em" }}>
             ▸ FLEET ASSETS
           </span>
+          <button
+            onClick={() => setFleetSettingsOpen(true)}
+            style={{
+              background: "none",
+              border: `1px solid ${tok.border}`,
+              color: tok.textDim,
+              padding: "2px 8px",
+              fontSize: 16,
+              cursor: "pointer",
+            }}
+          >
+            ⚙
+          </button>
         </div>
 
         <div style={{ flex: 1, overflow: "hidden" }}>
@@ -326,11 +347,22 @@ export default function Home() {
             <FleetWidget
               fleets={fleets}
               onFleetDoubleClick={handleFleetDoubleClick}
-              selectedFleetId={selectedSystem?.id}
+              selectedFleetId={undefined}
             />
           )}
         </div>
       </div>
+
+      {/* Fleet Settings Modal */}
+      <FleetSettings 
+        isOpen={fleetSettingsOpen} 
+        onClose={() => setFleetSettingsOpen(false)}
+        onFleetSelect={(fleetId: number) => {
+          const fleet = fleets.find(f => f.id === fleetId)
+          if (fleet) setSelectedFleetForShips(fleet)
+        }}
+        onFleetCreated={refreshFleets}
+      />
     </main>
   )
 }

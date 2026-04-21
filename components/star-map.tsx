@@ -25,7 +25,7 @@ const tok = {
   border:     '#1e3022',
   textDim:    '#3d5c42',
   textBase:   '#8ab08a',
-  textHot:    '#c8a840',
+  textHot:    '#ff8800',
   textGreen:  '#6adc7a',
   gateStroke: '#2e5035',
   gridStroke: '#1a2a1a',
@@ -81,7 +81,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
     }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ color: '#c84040', fontSize: 11, letterSpacing: '0.22em', marginBottom: 6 }}>⚠ SIGNAL LOST</div>
-        <div style={{ color: tok.textDim, fontSize: 9, letterSpacing: '0.15em' }}>DATABASE CONNECTION REQUIRED</div>
+        <div style={{ color: tok.textDim, fontSize: 16, letterSpacing: '0.15em' }}>DATABASE CONNECTION REQUIRED</div>
       </div>
     </div>
   )
@@ -250,7 +250,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
 
                 {/* Star type */}
                 <text
-                  x={cx} y={`${sy(system.y) + 11.5}%`}
+                  x={cx} y={`${sy(system.y) + 10}%`}
                   textAnchor="middle"
                   fill={tok.textDim}
                   fontSize="6"
@@ -277,11 +277,11 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
       }}>
         <div>
           <div style={{ color: tok.textBase, fontSize: 10, fontWeight: 'bold', letterSpacing: '0.2em' }}>GALACTIC OVERLAY</div>
-          <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', marginTop: 2 }}>
+          <div style={{ color: tok.textDim, fontSize: 16, letterSpacing: '0.15em', marginTop: 2 }}>
             SYSTEMS DETECTED: {starSystems.length}
           </div>
         </div>
-        <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', textAlign: 'right' }}>
+        <div style={{ color: tok.textDim, fontSize: 16, letterSpacing: '0.15em', textAlign: 'right' }}>
           <div>CLICK → DESIGNATE</div>
           <div>DBLCLICK → ENTER SYSTEM</div>
           <div>SCROLL → ZOOM</div>
@@ -306,10 +306,10 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
             <div style={{ color: tok.textHot, fontSize: 10, fontWeight: 'bold', letterSpacing: '0.12em', marginBottom: 4 }}>
               {sys.name.toUpperCase()}
             </div>
-            <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em' }}>
+            <div style={{ color: tok.textDim, fontSize: 16, letterSpacing: '0.15em' }}>
               STAR CLASS: {sys.star_type}
             </div>
-            <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', marginTop: 2 }}>
+            <div style={{ color: tok.textDim, fontSize: 16, letterSpacing: '0.15em', marginTop: 2 }}>
               STATUS: DESIGNATED ◆
             </div>
           </div>

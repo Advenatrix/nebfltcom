@@ -23,15 +23,15 @@ interface FleetWidgetProps {
 const tok = {
   bg:           '#060b07',
   panelBg:      'rgba(4, 9, 5, 0.96)',
-  border:       '#1e3022',
-  borderBright: '#2e5035',
-  textDim:      '#3d5c42',
-  textBase:     '#8ab08a',
-  textHot:      '#c8a840',
+  border:       '#3d5c42',
+  borderBright: '#ff8800',
+  textDim:      '#6a8a6a',
+  textBase:     '#a8c8a8',
+  textHot:      '#ff8800',
   textGreen:    '#6adc7a',
 }
 
-function CornerBrackets({ color = '#4a7a50' }: { color?: string }) {
+function CornerBrackets({ color = '#ff8800' }: { color?: string }) {
   const s: React.CSSProperties = { position: 'absolute', width: 8, height: 8 }
   const b = `1px solid ${color}`
   return (
@@ -92,7 +92,7 @@ export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selecte
             animation: 'fleetPulse 2.4s infinite',
           }} />
           <style>{`@keyframes fleetPulse { 0%,100%{opacity:1} 50%{opacity:0.25} }`}</style>
-          <span style={{ color: tok.textBase, fontSize: 10, letterSpacing: '0.25em', fontWeight: 'bold' }}>
+          <span style={{ color: tok.textBase, fontSize: 12, letterSpacing: '0.25em', fontWeight: 'bold' }}>
             FLEET ASSETS
           </span>
         </div>
@@ -103,7 +103,7 @@ export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selecte
             border: 'none',
             color: tok.textDim,
             cursor: 'pointer',
-            fontSize: 10,
+            fontSize: 16,
             letterSpacing: '0.1em',
             padding: '2px 4px',
           }}
@@ -117,7 +117,7 @@ export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selecte
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {fleets.length === 0 ? (
             <div style={{
-              color: tok.textDim, fontSize: 9, textAlign: 'center',
+              color: tok.textDim, fontSize: 12, textAlign: 'center',
               padding: '32px 0', letterSpacing: '0.2em',
             }}>
               NO ASSETS DETECTED
@@ -152,14 +152,14 @@ export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selecte
                   {isSelected && <CornerBrackets color={tok.textBase} />}
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ color: tok.textBase, fontSize: 11, fontWeight: 'bold', letterSpacing: '0.08em' }}>
+                    <span style={{ color: tok.textBase, fontSize: 13, fontWeight: 'bold', letterSpacing: '0.08em' }}>
                       {fleet.name.toUpperCase()}
                     </span>
                     <span style={{
-                      fontSize: 8,
+                      fontSize: 16,
                       letterSpacing: '0.2em',
                       padding: '2px 6px',
-                      border: `1px solid ${traveling ? '#c8a840' : '#3d6a40'}`,
+                      border: `1px solid ${traveling ? tok.textHot : '#3d6a40'}`,
                       color: traveling ? tok.textHot : tok.textBase,
                       background: traveling ? 'rgba(200,168,64,0.08)' : 'rgba(106,220,122,0.06)',
                     }}>
@@ -167,7 +167,7 @@ export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selecte
                     </span>
                   </div>
 
-                  <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em' }}>
+                  <div style={{ color: tok.textBase, fontSize: 13, letterSpacing: '0.15em' }}>
                     SHIPS: 2 &nbsp;|&nbsp; READINESS: 100%
                   </div>
                 </div>
@@ -180,16 +180,16 @@ export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selecte
       {/* Footer */}
       <div style={{
         borderTop: `1px solid ${tok.border}`,
-        padding: '6px 14px',
+        padding: '8px 14px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexShrink: 0,
       }}>
-        <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>
+        <span style={{ color: tok.textBase, fontSize: 11, letterSpacing: '0.2em' }}>
           OPERATIONAL: {fleets.length}
         </span>
-        <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>
+        <span style={{ color: tok.textBase, fontSize: 11, letterSpacing: '0.2em' }}>
           ▸ DBL-CLICK: INSPECT
         </span>
       </div>

@@ -96,14 +96,14 @@ INSERT INTO industries (colony_id, kind, level, output_per_day) VALUES
   ((SELECT id FROM colonies WHERE name='Syndicate HQ'), 'fab',      5, 260),
   ((SELECT id FROM colonies WHERE name='Cloud Reach'),  'refinery', 3, 110);
 
--- Fleets
-INSERT INTO fleets (id, name, faction_id, current_system_id, owner_user_id) VALUES
-  (1, 'Home Guard',      1, 1, (SELECT id FROM users WHERE username='terran')),
-  (2, 'Second Fleet',    1, 5, (SELECT id FROM users WHERE username='terran')),
-  (3, 'Frontier Raiders',2, 2, (SELECT id FROM users WHERE username='frontier')),
-  (4, 'Outer Patrol',    2, 7, (SELECT id FROM users WHERE username='frontier')),
-  (5, 'Syndicate Vanguard',3,6, (SELECT id FROM users WHERE username='kepler')),
-  (6, 'Ghost Squadron',  3, 4, (SELECT id FROM users WHERE username='kepler'));
+-- Fleets (now with optional planet_id)
+INSERT INTO fleets (id, name, faction_id, current_system_id, current_planet_id, owner_user_id) VALUES
+  (1, 'Home Guard',      1, 1, (SELECT id FROM planets WHERE name='Earth'), (SELECT id FROM users WHERE username='terran')),
+  (2, 'Second Fleet',    1, 5, (SELECT id FROM planets WHERE name='Sirius b-I'), (SELECT id FROM users WHERE username='terran')),
+  (3, 'Frontier Raiders',2, 2, NULL, (SELECT id FROM users WHERE username='frontier')),
+  (4, 'Outer Patrol',    2, 7, NULL, (SELECT id FROM users WHERE username='frontier')),
+  (5, 'Syndicate Vanguard',3,6, NULL, (SELECT id FROM users WHERE username='kepler')),
+  (6, 'Ghost Squadron',  3, 4, NULL, (SELECT id FROM users WHERE username='kepler'));
 SELECT setval(pg_get_serial_sequence('fleets','id'), (SELECT MAX(id) FROM fleets));
 
 -- Ships

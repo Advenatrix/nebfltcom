@@ -79,6 +79,9 @@ export function FleetShipsList({ fleetId, fleetName, onBack }: FleetShipsListPro
   const [error, setError] = useState<string | null>(null)
   const [expandedShipId, setExpandedShipId] = useState<number | null>(null)
   const [selectedShipId, setSelectedShipId] = useState<number | null>(null)
+  const [showAddShip, setShowAddShip] = useState(false)
+  const [newShipName, setNewShipName] = useState('')
+  const [newShipClass, setNewShipClass] = useState('frigate')
 
   useEffect(() => {
     const fetchShips = async () => {
@@ -99,6 +102,26 @@ export function FleetShipsList({ fleetId, fleetName, onBack }: FleetShipsListPro
     }
     fetchShips()
   }, [fleetId])
+
+  const handleAddShip = async () => {
+    if (!newShipName.trim()) return
+    try {
+      const res = await fetch(`/api/fleets/${fleetId}/ships`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newShipName, hull_class: newShipClass }),
+      })
+      if (res.ok) {
+        setNewShipName('')
+        setNewShipClass('frigate')
+        setShowAddShip(false)
+        const updated = await fetch(`/api/fleets/${fleetId}/ships`)
+        if (updated.ok) setShips(await updated.json())
+      }
+    } catch (e) {
+      console.error('Error adding ship:', e)
+    }
+  }
 
   const baseStyle: React.CSSProperties = {
     height: '100%',
@@ -336,10 +359,92 @@ export function FleetShipsList({ fleetId, fleetName, onBack }: FleetShipsListPro
         flexShrink: 0,
         display: 'flex',
         justifyContent: 'space-between',
+        alignItems: 'center',
       }}>
         <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>
           VESSELS: {ships.length}
         </span>
+        {showAddShip ? (
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            <input
+              value={newShipName}
+              onChange={e => setNewShipName(e.target.value)}
+              placeholder="Name"
+              style={{
+                background: tok.bg,
+                border: `1px solid ${tok.border}`,
+                color: tok.textBase,
+                padding: '4px 6px',
+                fontSize: 8,
+                fontFamily: 'inherit',
+                width: 70,
+              }}
+            />
+            <select
+              value={newShipClass}
+              onChange={e => setNewShipClass(e.target.value)}
+              style={{
+                background: tok.bg,
+                border: `1px solid ${tok.border}`,
+                color: tok.textBase,
+                padding: '4px 4px',
+                fontSize: 8,
+                fontFamily: 'inherit',
+              }}
+            >
+              <option value="frigate">Frigate</option>
+              <option value="corvette">Corvette</option>
+              <option value="destroyer">Destroyer</option>
+              <option value="cruiser">Cruiser</option>
+              <option value="carrier">Carrier</option>
+              <option value="support">Support</option>
+            </select>
+            <button
+              onClick={handleAddShip}
+              style={{
+                background: '#1a3a1a',
+                border: `1px solid #4a8a4a`,
+                color: '#8ada8a',
+                padding: '4px 8px',
+                fontSize: 8,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              ✓
+            </button>
+            <button
+              onClick={() => { setShowAddShip(false); setNewShipName('') }}
+              style={{
+                background: '#3a1a1a',
+                border: `1px solid #8a4a4a`,
+                color: '#da8a8a',
+                padding: '4px 8px',
+                fontSize: 8,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAddShip(true)}
+            style={{
+              background: 'transparent',
+              border: `1px solid ${tok.border}`,
+              color: tok.textDim,
+              padding: '4px 8px',
+              fontSize: 8,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              letterSpacing: '0.1em',
+            }}
+          >
+            + SHIP
+          </button>
+        )}
       </div>
     </div>
   )

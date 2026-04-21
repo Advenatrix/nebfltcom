@@ -97,12 +97,13 @@ CREATE TABLE industries (
   output_per_day INTEGER NOT NULL DEFAULT 10
 );
 
--- Fleets live in a system (or are in transit, we'll keep simple: current_system_id)
+-- Fleets live in a system, optionally at a planet (or star = null planet)
 CREATE TABLE fleets (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   faction_id INTEGER NOT NULL REFERENCES factions(id) ON DELETE CASCADE,
   current_system_id INTEGER NOT NULL REFERENCES star_systems(id) ON DELETE RESTRICT,
+  current_planet_id INTEGER REFERENCES planets(id) ON DELETE SET NULL,
   owner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

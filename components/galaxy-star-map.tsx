@@ -22,12 +22,12 @@ interface StarMapProps {
 
 const tok = {
   bg:         '#050905',
-  border:     '#1e3022',
-  textDim:    '#3d5c42',
-  textBase:   '#8ab08a',
-  textHot:    '#c8a840',
+  border:     '#3d5c42',
+  textDim:    '#6a8a6a',
+  textBase:   '#a8c8a8',
+  textHot:    '#ff8800',
   textGreen:  '#6adc7a',
-  gateStroke: '#2e5035',
+  gateStroke: '#3d5c42',
   gridStroke: '#1a2a1a',
 }
 
@@ -67,7 +67,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: "'Courier New', Courier, monospace",
     }}>
-      <span style={{ color: tok.textBase, fontSize: 10, letterSpacing: '0.28em', opacity: 0.7 }}>
+      <span style={{ color: tok.textBase, fontSize: 16, letterSpacing: '0.28em', opacity: 0.7 }}>
         SCANNING SECTOR…
       </span>
     </div>
@@ -81,7 +81,7 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
     }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ color: '#c84040', fontSize: 11, letterSpacing: '0.22em', marginBottom: 6 }}>⚠ SIGNAL LOST</div>
-        <div style={{ color: tok.textDim, fontSize: 9, letterSpacing: '0.15em' }}>DATABASE CONNECTION REQUIRED</div>
+        <div style={{ color: tok.textDim, fontSize: 16, letterSpacing: '0.15em' }}>DATABASE CONNECTION REQUIRED</div>
       </div>
     </div>
   )
@@ -265,56 +265,28 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
         </g>
       </svg>
 
-      {/* Top HUD strip */}
+      {/* Top HUD strip - solid background */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30,
-        padding: '6px 14px',
-        background: 'linear-gradient(to bottom, rgba(3,7,4,0.9) 0%, transparent 100%)',
+        padding: '8px 14px',
+        background: 'rgba(3,7,4,0.97)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         fontFamily: "'Courier New', Courier, monospace",
-        pointerEvents: 'none',
         borderBottom: `1px solid ${tok.border}`,
       }}>
         <div>
-          <div style={{ color: tok.textBase, fontSize: 10, fontWeight: 'bold', letterSpacing: '0.2em' }}>GALACTIC OVERLAY</div>
-          <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', marginTop: 2 }}>
+          <div style={{ color: tok.textBase, fontSize: 12, fontWeight: 'bold', letterSpacing: '0.2em' }}>GALACTIC OVERLAY</div>
+          <div style={{ color: tok.textDim, fontSize: 16, letterSpacing: '0.15em', marginTop: 2 }}>
             SYSTEMS DETECTED: {starSystems.length}
           </div>
         </div>
-        <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', textAlign: 'right' }}>
+        <div style={{ color: tok.textDim, fontSize: 12, letterSpacing: '0.15em', textAlign: 'right' }}>
           <div>CLICK → DESIGNATE</div>
-          <div>DBLCLICK → ENTER SYSTEM</div>
+          <div>DBLCLK → ENTER</div>
           <div>SCROLL → ZOOM</div>
         </div>
       </div>
-
-      {/* Selected system readout — bottom left */}
-      {selectedSystemId && (() => {
-        const sys = starSystems.find(s => s.id === selectedSystemId)
-        if (!sys) return null
-        return (
-          <div style={{
-            position: 'absolute', bottom: 16, left: 16, zIndex: 30,
-            background: 'rgba(4,9,5,0.92)',
-            border: `1px solid ${tok.gateStroke}`,
-            borderLeft: `3px solid ${tok.textHot}`,
-            padding: '8px 12px',
-            fontFamily: "'Courier New', Courier, monospace",
-            pointerEvents: 'none',
-            maxWidth: 220,
-          }}>
-            <div style={{ color: tok.textHot, fontSize: 10, fontWeight: 'bold', letterSpacing: '0.12em', marginBottom: 4 }}>
-              {sys.name.toUpperCase()}
-            </div>
-            <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em' }}>
-              STAR CLASS: {sys.star_type}
-            </div>
-            <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', marginTop: 2 }}>
-              STATUS: DESIGNATED ◆
-            </div>
-          </div>
-        )
-      })()}
     </div>
+      
   )
 }
