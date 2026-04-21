@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 
 interface Fleet {
   id: number
@@ -20,6 +20,30 @@ interface FleetWidgetProps {
   selectedFleetId?: number
 }
 
+const tok = {
+  bg:           '#060b07',
+  panelBg:      'rgba(4, 9, 5, 0.96)',
+  border:       '#1e3022',
+  borderBright: '#2e5035',
+  textDim:      '#3d5c42',
+  textBase:     '#8ab08a',
+  textHot:      '#c8a840',
+  textGreen:    '#6adc7a',
+}
+
+function CornerBrackets({ color = '#4a7a50' }: { color?: string }) {
+  const s: React.CSSProperties = { position: 'absolute', width: 8, height: 8 }
+  const b = `1px solid ${color}`
+  return (
+    <>
+      <span style={{ ...s, top: -1, left:  -1, borderTop: b, borderLeft:  b }} />
+      <span style={{ ...s, top: -1, right: -1, borderTop: b, borderRight: b }} />
+      <span style={{ ...s, bottom: -1, left:  -1, borderBottom: b, borderLeft:  b }} />
+      <span style={{ ...s, bottom: -1, right: -1, borderBottom: b, borderRight: b }} />
+    </>
+  )
+}
+
 export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selectedFleetId }: FleetWidgetProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [expandedFleet, setExpandedFleet] = useState<number | null>(null)
@@ -28,14 +52,10 @@ export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selecte
 
   const handleFleetClick = (fleet: Fleet) => {
     const now = Date.now()
-    const timeSinceLastClick = now - lastClickTime.current
-
-    if (timeSinceLastClick < 300) {
-      // Double click
+    if (now - lastClickTime.current < 300) {
       onFleetDoubleClick?.(fleet)
       if (clickTimeout.current) clearTimeout(clickTimeout.current)
     } else {
-      // Single click
       setExpandedFleet(expandedFleet === fleet.id ? null : fleet.id)
       onFleetSelect?.(fleet)
       clickTimeout.current = setTimeout(() => {}, 300)
@@ -44,57 +64,134 @@ export function FleetWidget({ fleets, onFleetSelect, onFleetDoubleClick, selecte
   }
 
   return (
-    <div className="h-full bg-black border-l-2 border-cyan-500 flex flex-col overflow-hidden shadow-2xl" style={{ borderImage: 'linear-gradient(180deg, rgb(0,255,255), rgb(0,128,128)) 1' }}>
+    <div style={{
+      height: '100%',
+      background: tok.bg,
+      borderLeft: `1px solid ${tok.border}`,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      fontFamily: "'Courier New', Courier, monospace",
+    }}>
+
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-cyan-500/50 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
-          <h2 className="text-cyan-400 font-mono text-sm font-bold tracking-wider">FLEET STATUS</h2>
+      <div style={{
+        padding: '8px 14px',
+        borderBottom: `1px solid ${tok.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'rgba(3, 7, 4, 0.97)',
+        flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            display: 'inline-block', width: 6, height: 6,
+            background: tok.textGreen,
+            boxShadow: `0 0 5px ${tok.textGreen}`,
+            animation: 'fleetPulse 2.4s infinite',
+          }} />
+          <style>{`@keyframes fleetPulse { 0%,100%{opacity:1} 50%{opacity:0.25} }`}</style>
+          <span style={{ color: tok.textBase, fontSize: 10, letterSpacing: '0.25em', fontWeight: 'bold' }}>
+            FLEET ASSETS
+          </span>
         </div>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-cyan-400 hover:text-cyan-300 font-bold text-lg"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: tok.textDim,
+            cursor: 'pointer',
+            fontSize: 10,
+            letterSpacing: '0.1em',
+            padding: '2px 4px',
+          }}
         >
-          {isCollapsed ? '▼' : '▲'}
+          {isCollapsed ? '▼ EXPAND' : '▲ COLLAPSE'}
         </button>
       </div>
 
       {/* Fleet List */}
       {!isCollapsed && (
-        <div className="flex-1 overflow-y-auto space-y-2 p-3">
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {fleets.length === 0 ? (
-            <div className="text-slate-500 text-xs text-center py-8">NO FLEETS DETECTED</div>
+            <div style={{
+              color: tok.textDim, fontSize: 9, textAlign: 'center',
+              padding: '32px 0', letterSpacing: '0.2em',
+            }}>
+              NO ASSETS DETECTED
+            </div>
           ) : (
-            fleets.map((fleet) => (
-              <div
-                key={fleet.id}
-                onClick={() => handleFleetClick(fleet)}
-                className={`cursor-pointer transition-all ${
-                  selectedFleetId === fleet.id
-                    ? 'bg-blue-500/20 border border-blue-400'
-                    : 'bg-slate-900/50 border border-slate-700/50 hover:border-slate-700'
-                } p-2 rounded font-mono text-xs`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-blue-300 font-bold">{fleet.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${
-                    fleet.status === 'traveling' ? 'bg-yellow-500/30 text-yellow-300' : 'bg-green-500/30 text-green-300'
-                  }`}>
-                    {fleet.status === 'traveling' ? '▶ EN ROUTE' : '⚓ ORBITING'}
-                  </span>
+            fleets.map((fleet) => {
+              const isSelected = selectedFleetId === fleet.id
+              const isExpanded = expandedFleet === fleet.id
+              const traveling = fleet.status === 'traveling'
+
+              return (
+                <div
+                  key={fleet.id}
+                  onClick={() => handleFleetClick(fleet)}
+                  style={{
+                    position: 'relative',
+                    marginBottom: 6,
+                    padding: '8px 10px',
+                    background: isSelected ? 'rgba(106,220,122,0.07)' : 'rgba(4,9,5,0.6)',
+                    border: `1px solid ${isSelected ? tok.borderBright : tok.border}`,
+                    borderLeft: `3px solid ${isSelected ? tok.textBase : tok.border}`,
+                    cursor: 'pointer',
+                    transition: 'border-color 0.12s, background 0.12s',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isSelected) e.currentTarget.style.borderColor = tok.borderBright
+                  }}
+                  onMouseLeave={e => {
+                    if (!isSelected) e.currentTarget.style.borderColor = tok.border
+                  }}
+                >
+                  {isSelected && <CornerBrackets color={tok.textBase} />}
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ color: tok.textBase, fontSize: 11, fontWeight: 'bold', letterSpacing: '0.08em' }}>
+                      {fleet.name.toUpperCase()}
+                    </span>
+                    <span style={{
+                      fontSize: 8,
+                      letterSpacing: '0.2em',
+                      padding: '2px 6px',
+                      border: `1px solid ${traveling ? '#c8a840' : '#3d6a40'}`,
+                      color: traveling ? tok.textHot : tok.textBase,
+                      background: traveling ? 'rgba(200,168,64,0.08)' : 'rgba(106,220,122,0.06)',
+                    }}>
+                      {traveling ? '▶ TRANSIT' : '⚓ DOCKED'}
+                    </span>
+                  </div>
+
+                  <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em' }}>
+                    SHIPS: 2 &nbsp;|&nbsp; READINESS: 100%
+                  </div>
                 </div>
-                <div className="text-slate-400/70 text-xs">SHIPS: 2 | READY: 100%</div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       )}
 
       {/* Footer */}
-      <div className="border-t border-slate-700/50 px-3 py-2 bg-slate-950/50">
-        <div className="text-slate-400/60 font-mono text-xs">
+      <div style={{
+        borderTop: `1px solid ${tok.border}`,
+        padding: '6px 14px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexShrink: 0,
+      }}>
+        <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>
           OPERATIONAL: {fleets.length}
-        </div>
+        </span>
+        <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>
+          ▸ DBL-CLICK: INSPECT
+        </span>
       </div>
     </div>
   )

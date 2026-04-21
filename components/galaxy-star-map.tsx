@@ -3,25 +3,15 @@
 import { useState, useEffect } from 'react'
 
 interface StarSystem {
-  id: number
-  name: string
-  x: number
-  y: number
-  star_type: string
-  star_color: string
-  description: string
+  id: number; name: string; x: number; y: number
+  star_type: string; star_color: string; description: string
 }
 
 interface Gate {
   id: number
-  system_a_id: number
-  system_b_id: number
-  system_a_name: string
-  system_a_x: number
-  system_a_y: number
-  system_b_name: string
-  system_b_x: number
-  system_b_y: number
+  system_a_id: number; system_b_id: number
+  system_a_name: string; system_a_x: number; system_a_y: number
+  system_b_name: string; system_b_x: number; system_b_y: number
 }
 
 interface StarMapProps {
@@ -30,11 +20,22 @@ interface StarMapProps {
   selectedSystemId?: number
 }
 
+const tok = {
+  bg:         '#050905',
+  border:     '#1e3022',
+  textDim:    '#3d5c42',
+  textBase:   '#8ab08a',
+  textHot:    '#c8a840',
+  textGreen:  '#6adc7a',
+  gateStroke: '#2e5035',
+  gridStroke: '#1a2a1a',
+}
+
 export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSystemId }: StarMapProps) {
   const [starSystems, setStarSystems] = useState<StarSystem[]>([])
   const [gates, setGates] = useState<Gate[]>([])
   const [loading, setLoading] = useState(true)
-  const [hoveredSystemId, setHoveredSystemId] = useState<number | null>(null)
+  const [hoveredId, setHoveredId] = useState<number | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
@@ -43,82 +44,75 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [systemsRes, gatesRes] = await Promise.all([
+        const [sRes, gRes] = await Promise.all([
           fetch('/api/star-systems'),
-          fetch('/api/gates')
+          fetch('/api/gates'),
         ])
-
-        if (systemsRes.ok && gatesRes.ok) {
-          const systems = await systemsRes.json()
-          const gatesData = await gatesRes.json()
-          setStarSystems(systems)
-          setGates(gatesData)
+        if (sRes.ok && gRes.ok) {
+          setStarSystems(await sRes.json())
+          setGates(await gRes.json())
         }
-      } catch (error) {
-        console.error('Error fetching data:', error)
+      } catch (e) {
+        console.error(e)
       } finally {
         setLoading(false)
       }
     }
-
     fetchData()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950 flex items-center justify-center border border-slate-700/50">
-        <div className="text-blue-400 font-mono animate-pulse">SCANNING GALAXY...</div>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div style={{
+      width: '100%', height: '100%', background: tok.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: "'Courier New', Courier, monospace",
+    }}>
+      <span style={{ color: tok.textBase, fontSize: 10, letterSpacing: '0.28em', opacity: 0.7 }}>
+        SCANNING SECTOR…
+      </span>
+    </div>
+  )
 
-  if (starSystems.length === 0) {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950 flex items-center justify-center border border-slate-700/50">
-        <div className="text-center space-y-3">
-          <div className="text-red-500 font-mono font-bold">⚠ SIGNAL LOST</div>
-          <div className="text-slate-400/70 font-mono text-sm">Database connection required</div>
-        </div>
+  if (starSystems.length === 0) return (
+    <div style={{
+      width: '100%', height: '100%', background: tok.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: "'Courier New', Courier, monospace",
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ color: '#c84040', fontSize: 11, letterSpacing: '0.22em', marginBottom: 6 }}>⚠ SIGNAL LOST</div>
+        <div style={{ color: tok.textDim, fontSize: 9, letterSpacing: '0.15em' }}>DATABASE CONNECTION REQUIRED</div>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // Calculate bounds for scaling
   const minX = Math.min(...starSystems.map(s => s.x))
   const maxX = Math.max(...starSystems.map(s => s.x))
   const minY = Math.min(...starSystems.map(s => s.y))
   const maxY = Math.max(...starSystems.map(s => s.y))
+  const pad = 100
+  const W = maxX - minX + pad * 2
+  const H = maxY - minY + pad * 2
+  const sx = (c: number) => ((c - minX + pad) / W) * 100
+  const sy = (c: number) => ((c - minY + pad) / H) * 100
 
-  const padding = 100
-  const width = maxX - minX + padding * 2
-  const height = maxY - minY + padding * 2
-
-  const scaleX = (coord: number) => ((coord - minX + padding) / width) * 100
-  const scaleY = (coord: number) => ((coord - minY + padding) / height) * 100
-
-  const lastClickTime = { current: 0 }
-  let clickTimeout: NodeJS.Timeout
+  const lastClick = { current: 0 }
+  let clickTO: NodeJS.Timeout
 
   const handleSystemClick = (system: StarSystem) => {
-    if (isDragging) return // Don't select if we were dragging
-
+    if (isDragging) return
     const now = Date.now()
-    const timeSinceLastClick = now - lastClickTime.current
-
-    if (timeSinceLastClick < 300) {
-      // Double click
+    if (now - lastClick.current < 300) {
       onSystemDoubleClick(system)
-      clearTimeout(clickTimeout)
+      clearTimeout(clickTO)
     } else {
-      // Single click
       onSystemSelect(system)
-      clickTimeout = setTimeout(() => {}, 300)
+      clickTO = setTimeout(() => {}, 300)
     }
-    lastClickTime.current = now
+    lastClick.current = now
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Only pan with middle mouse or if right click
     if (e.button === 1 || e.button === 2) {
       setIsDragging(true)
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
@@ -127,227 +121,200 @@ export function GalaxyStarMap({ onSystemSelect, onSystemDoubleClick, selectedSys
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging && (e.buttons === 4 || e.buttons === 2)) {
-      setPan({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      })
+      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
     }
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
   }
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault()
-    const container = e.currentTarget as HTMLDivElement
-    const rect = container.getBoundingClientRect()
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-
-    const zoomSpeed = 0.1
-    const direction = e.deltaY > 0 ? -1 : 1
-    const newZoom = Math.max(0.5, Math.min(3, zoom + direction * zoomSpeed))
-    
-    // Zoom towards the center of the viewport instead of the cursor
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
-    
-    const zoomFactor = newZoom / zoom
-    const newPanX = centerX - (centerX - pan.x) * zoomFactor
-    const newPanY = centerY - (centerY - pan.y) * zoomFactor
-    
+    const rect = e.currentTarget.getBoundingClientRect()
+    const cx = rect.width / 2
+    const cy = rect.height / 2
+    const dir = e.deltaY > 0 ? -1 : 1
+    const newZoom = Math.max(0.5, Math.min(3, zoom + dir * 0.1))
+    const zf = newZoom / zoom
     setZoom(newZoom)
-    setPan({ x: newPanX, y: newPanY })
+    setPan({ x: cx - (cx - pan.x) * zf, y: cy - (cy - pan.y) * zf })
   }
 
   return (
-    <div 
-      className="w-full h-full bg-gradient-to-br from-slate-950 via-blue-950/30 to-slate-950 border border-slate-700/50 overflow-hidden relative cursor-grab active:cursor-grabbing"
+    <div
+      style={{ width: '100%', height: '100%', background: tok.bg, position: 'relative', overflow: 'hidden', cursor: 'crosshair' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseUp={() => setIsDragging(false)}
+      onMouseLeave={() => setIsDragging(false)}
       onWheel={handleWheel}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={e => e.preventDefault()}
     >
-      {/* Starfield background */}
-      <div className="absolute inset-0 opacity-30" style={{
-        backgroundImage: `
-          radial-gradient(1px 1px at 20px 30px, white, rgba(255,255,255,0)),
-          radial-gradient(1px 1px at 40px 70px, white, rgba(255,255,255,0)),
-          radial-gradient(2px 2px at 50px 50px, rgba(100, 200, 255, 0.8), rgba(255,255,255,0)),
-          radial-gradient(1px 1px at 130px 80px, white, rgba(255,255,255,0)),
-          radial-gradient(1px 1px at 90px 10px, white, rgba(255,255,255,0)),
-          radial-gradient(1.5px 1.5px at 130px 40px, white, rgba(255,255,255,0))
-        `,
-        backgroundSize: '200px 200px, 300px 300px, 250px 250px, 350px 350px, 400px 400px, 325px 325px',
-        backgroundPosition: '0 0, 20px 30px, 60px 70px, 130px 80px, 90px 10px, 130px 40px'
+      {/* Scanlines */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20,
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px)',
       }} />
 
-      {/* Grid background */}
-      <div className="absolute inset-0 opacity-5">
-        <svg width="100%" height="100%" className="w-full h-full">
-          <defs>
-            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="cyan" strokeWidth="0.5"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-      </div>
+      {/* SVG tactical grid */}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1 }}>
+        <defs>
+          <pattern id="tac-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+            <path d="M 48 0 L 0 0 0 48" fill="none" stroke={tok.gridStroke} strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#tac-grid)" opacity="0.6" />
+      </svg>
 
-      {/* Map */}
-      <svg className="absolute inset-0 w-full h-full cursor-pointer" style={{ zIndex: 10 }}>
+      {/* Main star map SVG */}
+      <svg
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 10 }}
+        fontFamily="'Courier New', Courier, monospace"
+      >
         <g style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
-          {/* Gates (FTL connections) */}
-          {gates.map((gate) => (
-          <g key={`gate-${gate.id}`}>
-            <line
-              x1={`${scaleX(gate.system_a_x)}%`}
-              y1={`${scaleY(gate.system_a_y)}%`}
-              x2={`${scaleX(gate.system_b_x)}%`}
-              y2={`${scaleY(gate.system_b_y)}%`}
-              stroke="#3b82f6"
-              strokeWidth="1.5"
-              opacity="0.5"
-              strokeDasharray="5,5"
-              className="hover:opacity-80 transition-opacity"
-            />
-            {/* Gate label at midpoint */}
-            <text
-              x={`${(scaleX(gate.system_a_x) + scaleX(gate.system_b_x)) / 2}%`}
-              y={`${(scaleY(gate.system_a_y) + scaleY(gate.system_b_y)) / 2}%`}
-              textAnchor="middle"
-              className="fill-blue-400/40 font-mono text-xs"
-              style={{ fontSize: '8px', pointerEvents: 'none' }}
-            >
-              ◆
-            </text>
-          </g>
-        ))}
 
-        {/* Star Systems */}
-        {starSystems.map((system) => (
-          <g 
-            key={`system-${system.id}`}
-            onClick={() => handleSystemClick(system)}
-            onMouseEnter={() => setHoveredSystemId(system.id)}
-            onMouseLeave={() => setHoveredSystemId(null)}
-            className="hover:opacity-100 transition-opacity"
-          >
-            {/* Outer ring (when hovered or selected) */}
-            {(hoveredSystemId === system.id || selectedSystemId === system.id) && (
-              <>
-                <circle
-                  cx={`${scaleX(system.x)}%`}
-                  cy={`${scaleY(system.y)}%`}
-                  r="25"
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="1.5"
-                  opacity="0.4"
-                  className="animate-pulse"
-                />
-                <circle
-                  cx={`${scaleX(system.x)}%`}
-                  cy={`${scaleY(system.y)}%`}
-                  r="35"
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="0.5"
-                  opacity="0.2"
-                />
-              </>
-            )}
-
-            {/* Star */}
-            <circle
-              cx={`${scaleX(system.x)}%`}
-              cy={`${scaleY(system.y)}%`}
-              r={selectedSystemId === system.id ? "12" : "8"}
-              fill={system.star_color}
-              stroke={selectedSystemId === system.id ? "#fbbf24" : "#60a5fa"}
-              strokeWidth={selectedSystemId === system.id ? "2" : "1.5"}
-              className="transition-all drop-shadow-lg cursor-pointer"
-              style={{
-                filter: `drop-shadow(0 0 ${selectedSystemId === system.id ? '12px' : '6px'} ${system.star_color})`
-              }}
-            />
-
-            {/* Scan indicator */}
-            {hoveredSystemId === system.id && (
-              <circle
-                cx={`${scaleX(system.x)}%`}
-                cy={`${scaleY(system.y)}%`}
-                r="8"
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth="2"
-                opacity="0.8"
+          {/* FTL lanes */}
+          {gates.map(gate => (
+            <g key={`gate-${gate.id}`}>
+              <line
+                x1={`${sx(gate.system_a_x)}%`} y1={`${sy(gate.system_a_y)}%`}
+                x2={`${sx(gate.system_b_x)}%`} y2={`${sy(gate.system_b_y)}%`}
+                stroke={tok.gateStroke}
+                strokeWidth="1"
+                strokeDasharray="6,8"
+                opacity="0.7"
               />
-            )}
+              {/* Midpoint waypoint marker */}
+              <text
+                x={`${(sx(gate.system_a_x) + sx(gate.system_b_x)) / 2}%`}
+                y={`${(sy(gate.system_a_y) + sy(gate.system_b_y)) / 2}%`}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={tok.textDim}
+                fontSize="7"
+                style={{ pointerEvents: 'none' }}
+              >
+                ◆
+              </text>
+            </g>
+          ))}
 
-            {/* System label */}
-            <text
-              x={`${scaleX(system.x)}%`}
-              y={`${scaleY(system.y) + 4}%`}
-              textAnchor="middle"
-              className="fill-blue-300 font-mono font-bold"
-              style={{ 
-                fontSize: '10px',
-                pointerEvents: 'none',
-                textShadow: '0 0 4px rgba(147, 197, 253, 0.4)'
-              }}
-            >
-              {system.name}
-            </text>
+          {/* Star systems */}
+          {starSystems.map(system => {
+            const cx = `${sx(system.x)}%`
+            const cy = `${sy(system.y)}%`
+            const isSelected = selectedSystemId === system.id
+            const isHovered = hoveredId === system.id
 
-            {/* Type indicator */}
-            <text
-              x={`${scaleX(system.x)}%`}
-              y={`${scaleY(system.y) + 12}%`}
-              textAnchor="middle"
-              className="fill-blue-400/60 font-mono"
-              style={{ fontSize: '7px', pointerEvents: 'none' }}
-            >
-              [{system.star_type}]
-            </text>
-          </g>
-        ))}
+            return (
+              <g
+                key={`sys-${system.id}`}
+                onClick={() => handleSystemClick(system)}
+                onMouseEnter={() => setHoveredId(system.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                style={{ cursor: 'pointer' }}
+              >
+                {/* Selection ring — amber square bracket style */}
+                {isSelected && (
+                  <>
+                    {/* Outer amber ring */}
+                    <circle cx={cx} cy={cy} r="22" fill="none" stroke={tok.textHot} strokeWidth="1" opacity="0.5" />
+                    <circle cx={cx} cy={cy} r="28" fill="none" stroke={tok.textHot} strokeWidth="0.5" opacity="0.2" strokeDasharray="3,5" />
+                  </>
+                )}
+
+                {/* Hover ring */}
+                {isHovered && !isSelected && (
+                  <circle cx={cx} cy={cy} r="18" fill="none" stroke={tok.textBase} strokeWidth="0.8" opacity="0.45" />
+                )}
+
+                {/* Star body */}
+                <circle
+                  cx={cx} cy={cy}
+                  r={isSelected ? '10' : '7'}
+                  fill={system.star_color}
+                  stroke={isSelected ? tok.textHot : tok.gateStroke}
+                  strokeWidth={isSelected ? '1.5' : '1'}
+                  style={{ filter: `drop-shadow(0 0 ${isSelected ? '10px' : '5px'} ${system.star_color})`, transition: 'r 0.15s' }}
+                />
+
+                {/* System label */}
+                <text
+                  x={cx} y={`${sy(system.y) + 4}%`}
+                  textAnchor="middle"
+                  fill={isSelected ? tok.textHot : tok.textBase}
+                  fontSize="9"
+                  fontWeight="bold"
+                  letterSpacing="0.06em"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {system.name.toUpperCase()}
+                </text>
+
+                {/* Star type */}
+                <text
+                  x={cx} y={`${sy(system.y) + 11.5}%`}
+                  textAnchor="middle"
+                  fill={tok.textDim}
+                  fontSize="6"
+                  letterSpacing="0.12em"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  [{system.star_type}]
+                </text>
+              </g>
+            )
+          })}
         </g>
       </svg>
 
-      {/* Top HUD */}
-      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-slate-950/80 to-transparent border-b border-slate-700/30 pointer-events-none font-mono text-xs">
-        <div className="flex justify-between">
-          <div>
-            <div className="text-blue-300 font-bold">GALACTIC MAP</div>
-            <div className="text-slate-400/70">STAR SYSTEMS {starSystems.length}</div>
+      {/* Top HUD strip */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30,
+        padding: '6px 14px',
+        background: 'linear-gradient(to bottom, rgba(3,7,4,0.9) 0%, transparent 100%)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        fontFamily: "'Courier New', Courier, monospace",
+        pointerEvents: 'none',
+        borderBottom: `1px solid ${tok.border}`,
+      }}>
+        <div>
+          <div style={{ color: tok.textBase, fontSize: 10, fontWeight: 'bold', letterSpacing: '0.2em' }}>GALACTIC OVERLAY</div>
+          <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', marginTop: 2 }}>
+            SYSTEMS DETECTED: {starSystems.length}
           </div>
-          <div className="text-right">
-            <div className="text-slate-400/70">NAVIGATION</div>
-            <div className="text-blue-300/80 text-xs">CLICK → SELECT • DBLCLICK → SCAN • SCROLL → ZOOM</div>
-          </div>
+        </div>
+        <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', textAlign: 'right' }}>
+          <div>CLICK → DESIGNATE</div>
+          <div>DBLCLICK → ENTER SYSTEM</div>
+          <div>SCROLL → ZOOM</div>
         </div>
       </div>
 
-      {/* System Info (bottom left) */}
-      {selectedSystemId && (
-        <div className="absolute bottom-4 left-4 bg-slate-950/70 border border-slate-700 p-3 font-mono text-xs max-w-xs pointer-events-none backdrop-blur-sm rounded">
-          {starSystems.find(s => s.id === selectedSystemId) && (
-            <>
-              <div className="text-blue-300 font-bold mb-2">
-                {starSystems.find(s => s.id === selectedSystemId)?.name}
-              </div>
-              <div className="text-slate-400/70 text-xs space-y-1">
-                <div>STAR TYPE: {starSystems.find(s => s.id === selectedSystemId)?.star_type}</div>
-                <div>STATUS: SCANNING...</div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {/* Selected system readout — bottom left */}
+      {selectedSystemId && (() => {
+        const sys = starSystems.find(s => s.id === selectedSystemId)
+        if (!sys) return null
+        return (
+          <div style={{
+            position: 'absolute', bottom: 16, left: 16, zIndex: 30,
+            background: 'rgba(4,9,5,0.92)',
+            border: `1px solid ${tok.gateStroke}`,
+            borderLeft: `3px solid ${tok.textHot}`,
+            padding: '8px 12px',
+            fontFamily: "'Courier New', Courier, monospace",
+            pointerEvents: 'none',
+            maxWidth: 220,
+          }}>
+            <div style={{ color: tok.textHot, fontSize: 10, fontWeight: 'bold', letterSpacing: '0.12em', marginBottom: 4 }}>
+              {sys.name.toUpperCase()}
+            </div>
+            <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em' }}>
+              STAR CLASS: {sys.star_type}
+            </div>
+            <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.15em', marginTop: 2 }}>
+              STATUS: DESIGNATED ◆
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

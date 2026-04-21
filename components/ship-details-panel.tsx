@@ -37,195 +37,291 @@ interface ShipDetailsPanelProps {
   onBack: () => void
 }
 
+const tok = {
+  bg:           '#060b07',
+  panelBg:      'rgba(4, 9, 5, 0.96)',
+  border:       '#1e3022',
+  borderBright: '#2e5035',
+  textDim:      '#3d5c42',
+  textBase:     '#8ab08a',
+  textHot:      '#c8a840',
+  textGreen:    '#6adc7a',
+}
+
+const hullColor = (hp: number, max = 500) => {
+  const p = hp / max
+  if (p > 0.6) return '#4a8a50'
+  if (p > 0.3) return '#c8a840'
+  return '#c84040'
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      color: tok.textDim, fontSize: 8, letterSpacing: '0.28em',
+      borderBottom: `1px solid ${tok.border}`,
+      paddingBottom: 5, marginBottom: 8,
+    }}>
+      ▸ {children}
+    </div>
+  )
+}
+
+function StatusBar({ value, max, color }: { value: number; max: number; color: string }) {
+  return (
+    <div style={{ height: 2, background: '#111a12', border: `1px solid ${tok.border}`, position: 'relative', margin: '3px 0' }}>
+      <div style={{ position: 'absolute', inset: 0, width: `${Math.min(100, (value / max) * 100)}%`, background: color }} />
+    </div>
+  )
+}
+
+function CornerBrackets({ color = '#4a7a50' }: { color?: string }) {
+  const s: React.CSSProperties = { position: 'absolute', width: 8, height: 8 }
+  const b = `1px solid ${color}`
+  return (
+    <>
+      <span style={{ ...s, top: -1, left:  -1, borderTop: b, borderLeft:  b }} />
+      <span style={{ ...s, top: -1, right: -1, borderTop: b, borderRight: b }} />
+      <span style={{ ...s, bottom: -1, left:  -1, borderBottom: b, borderLeft:  b }} />
+      <span style={{ ...s, bottom: -1, right: -1, borderBottom: b, borderRight: b }} />
+    </>
+  )
+}
+
 export function ShipDetailsPanel({ shipId, shipName, onBack }: ShipDetailsPanelProps) {
   const [ship, setShip] = useState<ShipDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchShipDetails = async () => {
+    const fetch_ = async () => {
       try {
-        const response = await fetch(`/api/ships/${shipId}`)
-        if (response.ok) {
-          const shipData = await response.json()
-          setShip(shipData)
+        const res = await fetch(`/api/ships/${shipId}`)
+        if (res.ok) {
+          setShip(await res.json())
           setError(null)
         } else {
-          const errorData = await response.json()
-          setError(errorData.error || 'Failed to fetch ship details')
+          const e = await res.json()
+          setError(e.error || 'Failed to fetch ship details')
         }
-      } catch (error) {
-        console.error('Error fetching ship:', error)
-        setError(error instanceof Error ? error.message : 'Unknown error')
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Unknown error')
       } finally {
         setLoading(false)
       }
     }
-
-    fetchShipDetails()
+    fetch_()
   }, [shipId])
 
-  if (loading) {
-    return (
-      <div className="h-full bg-black border-l-2 border-cyan-500 flex flex-col items-center justify-center">
-        <div className="text-cyan-400 font-mono animate-pulse">ACCESSING SHIP DATA...</div>
-      </div>
-    )
+  const base: React.CSSProperties = {
+    height: '100%',
+    background: tok.bg,
+    borderLeft: `1px solid ${tok.border}`,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    fontFamily: "'Courier New', Courier, monospace",
   }
 
-  if (error || !ship) {
-    return (
-      <div className="h-full bg-black border-l-2 border-cyan-500 flex flex-col items-center justify-center">
-        <div className="text-red-500 font-mono">{error || 'Ship not found'}</div>
-        <button
-          onClick={onBack}
-          className="mt-4 bg-cyan-600/20 border border-cyan-500 text-cyan-400 px-3 py-2 font-mono text-xs rounded hover:bg-cyan-600/40"
-        >
-          ← BACK
-        </button>
-      </div>
-    )
-  }
+  if (loading) return (
+    <div style={{ ...base, alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ color: tok.textBase, fontSize: 10, letterSpacing: '0.25em', opacity: 0.7 }}>
+        ACCESSING DOSSIER…
+      </span>
+    </div>
+  )
 
-  // Group weapons by mount kind
-  const weaponsByMount = ship.weapons.reduce((acc, weapon) => {
-    if (!acc[weapon.mount_kind]) {
-      acc[weapon.mount_kind] = []
-    }
-    acc[weapon.mount_kind].push(weapon)
+  if (error || !ship) return (
+    <div style={{ ...base, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <span style={{ color: '#c84040', fontSize: 10, letterSpacing: '0.2em' }}>⚠ {error ?? 'VESSEL NOT FOUND'}</span>
+      <button onClick={onBack} style={{
+        background: 'rgba(200,64,64,0.1)',
+        border: '1px solid #c84040',
+        color: '#c84040',
+        padding: '5px 14px',
+        fontSize: 9,
+        letterSpacing: '0.2em',
+        cursor: 'pointer',
+      }}>
+        ← RTN
+      </button>
+    </div>
+  )
+
+  const weaponsByMount = ship.weapons.reduce<Record<string, Weapon[]>>((acc, w) => {
+    ;(acc[w.mount_kind] ??= []).push(w)
     return acc
-  }, {} as Record<string, Weapon[]>)
+  }, {})
 
   return (
-    <div className="h-full bg-black border-l-2 border-cyan-500 flex flex-col overflow-hidden shadow-2xl" style={{ borderImage: 'linear-gradient(180deg, rgb(0,255,255), rgb(0,128,128)) 1' }}>
+    <div style={base}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-cyan-500/50 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
-          <div>
-            <h2 className="text-cyan-400 font-mono text-sm font-bold tracking-wider">{ship.name}</h2>
-            <div className="text-cyan-500/60 font-mono text-xs">{ship.hull_class.toUpperCase()}</div>
+      <div style={{
+        padding: '8px 14px',
+        borderBottom: `1px solid ${tok.border}`,
+        background: 'rgba(3,7,4,0.97)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexShrink: 0,
+      }}>
+        <div>
+          <div style={{ color: tok.textBase, fontSize: 11, fontWeight: 'bold', letterSpacing: '0.12em' }}>
+            {ship.name.toUpperCase()}
+          </div>
+          <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.25em', marginTop: 2 }}>
+            {ship.hull_class.toUpperCase()} — VESSEL DOSSIER
           </div>
         </div>
         <button
           onClick={onBack}
-          className="text-cyan-400 hover:text-cyan-300 font-bold text-lg"
+          style={{
+            background: 'none',
+            border: `1px solid ${tok.border}`,
+            color: tok.textDim,
+            fontSize: 9,
+            letterSpacing: '0.2em',
+            cursor: 'pointer',
+            padding: '3px 8px',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = tok.textBase; e.currentTarget.style.borderColor = tok.borderBright }}
+          onMouseLeave={e => { e.currentTarget.style.color = tok.textDim; e.currentTarget.style.borderColor = tok.border }}
         >
           ✕
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto space-y-4 p-3">
-        {/* Ship Status */}
-        <div className="bg-slate-950/50 border border-cyan-500/20 p-3 rounded space-y-2">
-          <div className="text-cyan-400 font-mono font-bold text-xs mb-3">SHIP STATUS</div>
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {/* Hull */}
-          <div>
-            <div className="text-cyan-400/70 text-xs mb-1">HULL INTEGRITY</div>
-            <div className="h-2 bg-slate-800 rounded overflow-hidden border border-cyan-500/20">
-              <div
-                className="h-full bg-gradient-to-r from-red-600 to-red-500"
-                style={{ width: `${(ship.hull_hp / 500) * 100}%` }}
-              />
+        {/* ── SHIP STATUS ────────────────────────────────────────── */}
+        <div style={{ position: 'relative', background: 'rgba(3,7,4,0.8)', border: `1px solid ${tok.border}`, padding: '10px 12px' }}>
+          <CornerBrackets />
+          <SectionLabel>SHIP STATUS</SectionLabel>
+
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
+              <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>HULL INTEGRITY</span>
+              <span style={{ color: hullColor(ship.hull_hp), fontSize: 8 }}>{ship.hull_hp} / 500 HP</span>
             </div>
-            <div className="text-cyan-500/50 text-xs mt-1">{ship.hull_hp} / 500 HP</div>
+            <StatusBar value={ship.hull_hp} max={500} color={hullColor(ship.hull_hp)} />
           </div>
 
-          {/* Crew */}
-          <div>
-            <div className="text-cyan-400/70 text-xs mb-1">CREW</div>
-            <div className="h-2 bg-slate-800 rounded overflow-hidden border border-cyan-500/20">
-              <div
-                className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
-                style={{ width: `${(ship.crew / ship.crew_max) * 100}%` }}
-              />
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
+              <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>CREW</span>
+              <span style={{ color: '#4a8aaa', fontSize: 8 }}>{ship.crew} / {ship.crew_max}</span>
             </div>
-            <div className="text-cyan-500/50 text-xs mt-1">{ship.crew} / {ship.crew_max}</div>
+            <StatusBar value={ship.crew} max={ship.crew_max} color="#4a8aaa" />
           </div>
 
-          {/* Ammo */}
           <div>
-            <div className="text-cyan-400/70 text-xs mb-1">READY AMMO</div>
-            <div className="h-2 bg-slate-800 rounded overflow-hidden border border-cyan-500/20">
-              <div
-                className="h-full bg-gradient-to-r from-yellow-600 to-yellow-500"
-                style={{ width: `${(ship.ammo / ship.ammo_max) * 100}%` }}
-              />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
+              <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>READY AMMUNITION</span>
+              <span style={{ color: tok.textHot, fontSize: 8 }}>{ship.ammo} / {ship.ammo_max}</span>
             </div>
-            <div className="text-cyan-500/50 text-xs mt-1">{ship.ammo} / {ship.ammo_max}</div>
+            <StatusBar value={ship.ammo} max={ship.ammo_max} color={tok.textHot} />
           </div>
         </div>
 
-        {/* Weapons */}
-        <div className="bg-slate-950/50 border border-cyan-500/20 p-3 rounded">
-          <div className="text-cyan-400 font-mono font-bold text-xs mb-3">WEAPONS SYSTEMS</div>
+        {/* ── WEAPONS SYSTEMS ────────────────────────────────────── */}
+        <div style={{ position: 'relative', background: 'rgba(3,7,4,0.8)', border: `1px solid ${tok.border}`, padding: '10px 12px' }}>
+          <CornerBrackets />
+          <SectionLabel>WEAPONS SYSTEMS</SectionLabel>
 
           {Object.keys(weaponsByMount).length === 0 ? (
-            <div className="text-cyan-500/50 text-xs">NO WEAPONS INSTALLED</div>
+            <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>NO WEAPONS INSTALLED</div>
           ) : (
-            <div className="space-y-3">
-              {Object.entries(weaponsByMount).map(([mountKind, weapons]) => (
-                <div key={mountKind} className="space-y-2">
-                  <div className="text-cyan-500/70 font-mono text-xs uppercase">{mountKind}</div>
-                  <div className="space-y-1 ml-2">
-                    {weapons.map((weapon) => (
-                      <div key={weapon.id} className="bg-slate-900/50 border border-cyan-500/10 p-2 rounded text-xs">
-                        <div className="flex justify-between items-center mb-1">
-                          <div className="text-cyan-300 font-mono">
-                            {weapon.weapon_name || '- EMPTY MOUNT -'}
-                          </div>
-                          {weapon.weapon_damage > 0 && (
-                            <div className="text-red-400 font-mono">{weapon.weapon_damage} DMG</div>
-                          )}
-                        </div>
-                        {weapon.weapon_caliber && (
-                          <div className="text-cyan-500/60 text-xs">{weapon.weapon_caliber}</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+            Object.entries(weaponsByMount).map(([mountKind, weapons]) => (
+              <div key={mountKind} style={{ marginBottom: 8 }}>
+                <div style={{ color: tok.textDim, fontSize: 7, letterSpacing: '0.25em', marginBottom: 4 }}>
+                  [{mountKind.toUpperCase()}]
                 </div>
-              ))}
-            </div>
+                {weapons.map((w) => (
+                  <div
+                    key={w.id}
+                    style={{
+                      background: 'rgba(4,9,5,0.6)',
+                      border: `1px solid ${tok.border}`,
+                      borderLeft: `2px solid ${w.weapon_damage > 0 ? '#c84040' : tok.textDim}`,
+                      padding: '5px 8px',
+                      marginBottom: 4,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <span style={{ color: w.weapon_name ? tok.textBase : tok.textDim, fontSize: 9, letterSpacing: '0.08em' }}>
+                        {w.weapon_name?.toUpperCase() ?? '— MOUNT VACANT —'}
+                      </span>
+                      {w.weapon_damage > 0 && (
+                        <span style={{ color: '#c84040', fontSize: 8, letterSpacing: '0.1em' }}>
+                          {w.weapon_damage} DMG
+                        </span>
+                      )}
+                    </div>
+                    {w.weapon_caliber && (
+                      <div style={{ color: tok.textDim, fontSize: 7, letterSpacing: '0.15em' }}>{w.weapon_caliber}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))
           )}
         </div>
 
-        {/* Cargo - Magazines and Ammo */}
-        <div className="bg-slate-950/50 border border-cyan-500/20 p-3 rounded">
-          <div className="text-cyan-400 font-mono font-bold text-xs mb-3">CARGO / AMMUNITION</div>
+        {/* ── CARGO / AMMUNITION ─────────────────────────────────── */}
+        <div style={{ position: 'relative', background: 'rgba(3,7,4,0.8)', border: `1px solid ${tok.border}`, padding: '10px 12px' }}>
+          <CornerBrackets />
+          <SectionLabel>CARGO / ORDNANCE</SectionLabel>
 
           {ship.magazines.length === 0 ? (
-            <div className="text-cyan-500/50 text-xs">NO CARGO</div>
+            <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>NO CARGO ON MANIFEST</div>
           ) : (
-            <div className="space-y-2">
-              {ship.magazines.map((mag) => (
-                <div key={mag.id} className="bg-slate-900/50 border border-cyan-500/10 p-2 rounded">
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="text-cyan-300 font-mono text-xs">{mag.ammo_type}</div>
-                    <div className="text-cyan-400 font-mono text-xs">{mag.quantity} / {mag.capacity}</div>
-                  </div>
-                  <div className="h-1 bg-slate-700 rounded overflow-hidden border border-cyan-500/10">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-600 to-cyan-500"
-                      style={{ width: `${(mag.quantity / mag.capacity) * 100}%` }}
-                    />
-                  </div>
+            ship.magazines.map((mag) => (
+              <div
+                key={mag.id}
+                style={{
+                  background: 'rgba(4,9,5,0.6)',
+                  border: `1px solid ${tok.border}`,
+                  padding: '6px 8px',
+                  marginBottom: 6,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ color: tok.textBase, fontSize: 9, letterSpacing: '0.08em' }}>{mag.ammo_type.toUpperCase()}</span>
+                  <span style={{ color: tok.textHot, fontSize: 8 }}>{mag.quantity} / {mag.capacity}</span>
                 </div>
-              ))}
-            </div>
+                <StatusBar value={mag.quantity} max={mag.capacity} color={tok.textHot} />
+              </div>
+            ))
           )}
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-cyan-500/30 px-3 py-2 bg-slate-950/50">
+      {/* Footer — back button */}
+      <div style={{
+        borderTop: `1px solid ${tok.border}`,
+        padding: '8px 10px',
+        flexShrink: 0,
+      }}>
         <button
           onClick={onBack}
-          className="w-full bg-cyan-600/20 border border-cyan-500/50 text-cyan-400 px-3 py-2 font-mono text-xs rounded hover:bg-cyan-600/40 transition-colors"
+          style={{
+            width: '100%',
+            background: 'rgba(4,9,5,0.8)',
+            border: `1px solid ${tok.borderBright}`,
+            borderLeft: `3px solid ${tok.textBase}`,
+            color: tok.textBase,
+            padding: '6px 0',
+            fontSize: 9,
+            letterSpacing: '0.25em',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            transition: 'background 0.12s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#0d1f10'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(4,9,5,0.8)'}
         >
-          ← BACK TO FLEET
+          ← RTN FLEET MANIFEST
         </button>
       </div>
     </div>

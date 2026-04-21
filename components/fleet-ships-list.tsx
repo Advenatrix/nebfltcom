@@ -23,6 +23,56 @@ interface FleetShipsListProps {
   onBack: () => void
 }
 
+const tok = {
+  bg:           '#060b07',
+  panelBg:      'rgba(4, 9, 5, 0.96)',
+  border:       '#1e3022',
+  borderBright: '#2e5035',
+  textDim:      '#3d5c42',
+  textBase:     '#8ab08a',
+  textHot:      '#c8a840',
+  textGreen:    '#6adc7a',
+}
+
+// Hull class → muted tactical accent colour
+const classColor: Record<string, string> = {
+  corvette:   '#4a8a6a',
+  frigate:    '#6a9a7a',
+  destroyer:  '#c8a840',
+  cruiser:    '#c87040',
+  battleship: '#c84040',
+}
+
+// Hull integrity colour — green → amber → red
+const hullIntegColor = (hp: number, max = 500) => {
+  const pct = hp / max
+  if (pct > 0.6) return '#4a8a50'
+  if (pct > 0.3) return '#c8a840'
+  return '#c84040'
+}
+
+function StatusBar({ value, max, color }: { value: number; max: number; color: string }) {
+  const pct = Math.min(100, (value / max) * 100)
+  return (
+    <div style={{ height: 2, background: '#111a12', border: `1px solid ${tok.border}`, position: 'relative', margin: '3px 0' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: `${pct}%`, background: color }} />
+    </div>
+  )
+}
+
+function CornerBrackets({ color = '#4a7a50' }: { color?: string }) {
+  const s: React.CSSProperties = { position: 'absolute', width: 7, height: 7 }
+  const b = `1px solid ${color}`
+  return (
+    <>
+      <span style={{ ...s, top: -1, left:  -1, borderTop: b, borderLeft:  b }} />
+      <span style={{ ...s, top: -1, right: -1, borderTop: b, borderRight: b }} />
+      <span style={{ ...s, bottom: -1, left:  -1, borderBottom: b, borderLeft:  b }} />
+      <span style={{ ...s, bottom: -1, right: -1, borderBottom: b, borderRight: b }} />
+    </>
+  )
+}
+
 export function FleetShipsList({ fleetId, fleetName, onBack }: FleetShipsListProps) {
   const [ships, setShips] = useState<Ship[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,65 +85,67 @@ export function FleetShipsList({ fleetId, fleetName, onBack }: FleetShipsListPro
       try {
         const response = await fetch(`/api/fleets/${fleetId}/ships`)
         if (response.ok) {
-          const shipsData = await response.json()
-          setShips(shipsData)
+          setShips(await response.json())
           setError(null)
         } else {
-          const errorData = await response.json()
-          setError(errorData.error || 'Failed to fetch ships')
+          const err = await response.json()
+          setError(err.error || 'Failed to fetch ships')
         }
-      } catch (error) {
-        console.error('Error fetching ships:', error)
-        setError(error instanceof Error ? error.message : 'Unknown error')
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Unknown error')
       } finally {
         setLoading(false)
       }
     }
-
     fetchShips()
   }, [fleetId])
 
-  const getHullColor = (hullClass: string): string => {
-    const colors: Record<string, string> = {
-      'corvette': '#34d399',
-      'frigate': '#60a5fa',
-      'destroyer': '#f97316',
-      'cruiser': '#8b5cf6',
-      'battleship': '#ef4444'
-    }
-    return colors[hullClass.toLowerCase()] || '#06b6d4'
+  const baseStyle: React.CSSProperties = {
+    height: '100%',
+    background: tok.bg,
+    borderLeft: `1px solid ${tok.border}`,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    fontFamily: "'Courier New', Courier, monospace",
   }
 
   if (loading) {
     return (
-      <div className="h-full bg-black border-l-2 border-cyan-500 flex flex-col items-center justify-center">
-        <div className="text-cyan-400 font-mono animate-pulse">LOADING FLEET...</div>
+      <div style={{ ...baseStyle, alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: tok.textBase, fontSize: 10, letterSpacing: '0.25em', opacity: 0.7 }}>
+          RETRIEVING MANIFEST…
+        </span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="h-full bg-black border-l-2 border-cyan-500 flex flex-col items-center justify-center">
-        <div className="text-red-500 font-mono">{error}</div>
-        <button
-          onClick={onBack}
-          className="mt-4 bg-cyan-600/20 border border-cyan-500 text-cyan-400 px-3 py-2 font-mono text-xs rounded hover:bg-cyan-600/40"
-        >
-          ← BACK
+      <div style={{ ...baseStyle, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <span style={{ color: '#c84040', fontSize: 10, letterSpacing: '0.2em' }}>⚠ {error}</span>
+        <button onClick={onBack} style={{
+          background: 'rgba(200,64,64,0.1)',
+          border: `1px solid #c84040`,
+          color: '#c84040',
+          padding: '5px 14px',
+          fontSize: 9,
+          letterSpacing: '0.2em',
+          cursor: 'pointer',
+        }}>
+          ← RTN FLEET VIEW
         </button>
       </div>
     )
   }
 
-  // Show ship details if one is selected
   if (selectedShipId !== null) {
-    const selectedShip = ships.find(s => s.id === selectedShipId)
-    if (selectedShip) {
+    const ship = ships.find(s => s.id === selectedShipId)
+    if (ship) {
       return (
         <ShipDetailsPanel
-          shipId={selectedShip.id}
-          shipName={selectedShip.name}
+          shipId={ship.id}
+          shipName={ship.name}
           onBack={() => setSelectedShipId(null)}
         />
       )
@@ -101,135 +153,193 @@ export function FleetShipsList({ fleetId, fleetName, onBack }: FleetShipsListPro
   }
 
   return (
-    <div className="h-full bg-black border-l-2 border-cyan-500 flex flex-col overflow-hidden shadow-2xl" style={{ borderImage: 'linear-gradient(180deg, rgb(0,255,255), rgb(0,128,128)) 1' }}>
+    <div style={baseStyle}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 border-b border-cyan-500/50 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse" />
-          <div>
-            <h2 className="text-cyan-400 font-mono text-sm font-bold tracking-wider">{fleetName}</h2>
-            <div className="text-cyan-500/60 font-mono text-xs">SHIP MANIFEST</div>
+      <div style={{
+        padding: '8px 14px',
+        borderBottom: `1px solid ${tok.border}`,
+        background: 'rgba(3, 7, 4, 0.97)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexShrink: 0,
+      }}>
+        <div>
+          <div style={{ color: tok.textBase, fontSize: 11, fontWeight: 'bold', letterSpacing: '0.12em' }}>
+            {fleetName.toUpperCase()}
+          </div>
+          <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.25em', marginTop: 2 }}>
+            ▸ SHIP MANIFEST
           </div>
         </div>
         <button
           onClick={onBack}
-          className="text-cyan-400 hover:text-cyan-300 font-bold text-lg"
+          style={{
+            background: 'none', border: `1px solid ${tok.border}`,
+            color: tok.textDim, fontSize: 9, letterSpacing: '0.2em',
+            cursor: 'pointer', padding: '3px 8px',
+            transition: 'color 0.12s, border-color 0.12s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = tok.textBase; e.currentTarget.style.borderColor = tok.borderBright }}
+          onMouseLeave={e => { e.currentTarget.style.color = tok.textDim;  e.currentTarget.style.borderColor = tok.border }}
         >
           ✕
         </button>
       </div>
 
-      {/* Ship List */}
-      <div className="flex-1 overflow-y-auto space-y-2 p-3">
+      {/* Ship list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
         {ships.length === 0 ? (
-          <div className="text-cyan-500/50 text-xs text-center py-8">NO SHIPS IN FLEET</div>
+          <div style={{ color: tok.textDim, fontSize: 9, textAlign: 'center', padding: '32px 0', letterSpacing: '0.2em' }}>
+            NO VESSELS ON REGISTER
+          </div>
         ) : (
-          ships.map((ship) => (
-            <div key={ship.id} className="space-y-2">
-              {/* Ship header - clickable to show details */}
-              <button
-                onClick={() => {
-                  if (selectedShipId === ship.id) {
-                    setExpandedShipId(expandedShipId === ship.id ? null : ship.id)
-                  } else {
-                    setSelectedShipId(ship.id)
-                  }
-                }}
-                className="w-full text-left bg-slate-900/50 border border-cyan-500/30 hover:border-cyan-500/60 p-2 rounded transition-all cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 flex-1">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: getHullColor(ship.hull_class) }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-cyan-300 font-mono font-bold text-xs">{ship.name}</div>
-                      <div className="text-cyan-500/60 font-mono text-xs">{ship.hull_class.toUpperCase()}</div>
-                    </div>
-                  </div>
-                  <div className="text-cyan-400 text-xs font-mono">
-                    {expandedShipId === ship.id ? '▼' : '▶'}
-                  </div>
-                </div>
-              </button>
+          ships.map((ship) => {
+            const accentColor = classColor[ship.hull_class.toLowerCase()] ?? '#6a8a70'
+            const isExpanded = expandedShipId === ship.id
 
-              {/* Ship details (expanded) */}
-              {expandedShipId === ship.id && (
-                <div className="bg-slate-950/80 border border-cyan-500/20 p-2 rounded space-y-2 text-xs">
-                  {/* Status bars */}
-                  <div className="space-y-1">
-                    {/* Hull HP */}
-                    <div>
-                      <div className="text-cyan-400/70 mb-0.5">HULL</div>
-                      <div className="h-1.5 bg-slate-800 rounded overflow-hidden border border-cyan-500/20">
-                        <div
-                          className="h-full bg-gradient-to-r from-red-600 to-red-500"
-                          style={{ width: `${(ship.hull_hp / 500) * 100}%` }}
-                        />
+            return (
+              <div key={ship.id} style={{ marginBottom: 6 }}>
+                {/* Ship row */}
+                <button
+                  onClick={() => {
+                    if (selectedShipId === ship.id) {
+                      setExpandedShipId(isExpanded ? null : ship.id)
+                    } else {
+                      setSelectedShipId(ship.id)
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'rgba(4,9,5,0.7)',
+                    border: `1px solid ${tok.border}`,
+                    borderLeft: `3px solid ${accentColor}`,
+                    padding: '7px 10px',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'border-color 0.12s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = tok.borderBright}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = tok.border; e.currentTarget.style.borderLeftColor = accentColor }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        display: 'inline-block', width: 8, height: 8,
+                        background: accentColor,
+                      }} />
+                      <div>
+                        <div style={{ color: tok.textBase, fontSize: 10, fontWeight: 'bold', letterSpacing: '0.1em' }}>
+                          {ship.name.toUpperCase()}
+                        </div>
+                        <div style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em', marginTop: 1 }}>
+                          {ship.hull_class.toUpperCase()}
+                        </div>
                       </div>
-                      <div className="text-cyan-500/50 text-xs">{ship.hull_hp} / 500 HP</div>
+                    </div>
+                    <span style={{ color: tok.textDim, fontSize: 9 }}>
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Expanded details */}
+                {isExpanded && (
+                  <div style={{
+                    position: 'relative',
+                    background: 'rgba(3,7,4,0.8)',
+                    border: `1px solid ${tok.border}`,
+                    borderTop: 'none',
+                    padding: '10px 12px',
+                    marginTop: -1,
+                  }}>
+                    <CornerBrackets />
+
+                    {/* Hull */}
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>HULL INTEGRITY</span>
+                        <span style={{ color: hullIntegColor(ship.hull_hp), fontSize: 8 }}>{ship.hull_hp} / 500</span>
+                      </div>
+                      <StatusBar value={ship.hull_hp} max={500} color={hullIntegColor(ship.hull_hp)} />
                     </div>
 
                     {/* Crew */}
-                    <div>
-                      <div className="text-cyan-400/70 mb-0.5">CREW</div>
-                      <div className="h-1.5 bg-slate-800 rounded overflow-hidden border border-cyan-500/20">
-                        <div
-                          className="h-full bg-gradient-to-r from-blue-600 to-blue-500"
-                          style={{ width: `${(ship.crew / ship.crew_max) * 100}%` }}
-                        />
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>CREW</span>
+                        <span style={{ color: '#4a8aaa', fontSize: 8 }}>{ship.crew} / {ship.crew_max}</span>
                       </div>
-                      <div className="text-cyan-500/50 text-xs">{ship.crew} / {ship.crew_max}</div>
+                      <StatusBar value={ship.crew} max={ship.crew_max} color="#4a8aaa" />
                     </div>
 
                     {/* Ammo */}
-                    <div>
-                      <div className="text-cyan-400/70 mb-0.5">AMMUNITION</div>
-                      <div className="h-1.5 bg-slate-800 rounded overflow-hidden border border-cyan-500/20">
-                        <div
-                          className="h-full bg-gradient-to-r from-yellow-600 to-yellow-500"
-                          style={{ width: `${(ship.ammo / ship.ammo_max) * 100}%` }}
-                        />
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>AMMUNITION</span>
+                        <span style={{ color: tok.textHot, fontSize: 8 }}>{ship.ammo} / {ship.ammo_max}</span>
                       </div>
-                      <div className="text-cyan-500/50 text-xs">{ship.ammo} / {ship.ammo_max}</div>
+                      <StatusBar value={ship.ammo} max={ship.ammo_max} color={tok.textHot} />
                     </div>
-                  </div>
 
-                  {/* Weapon and Magazine count */}
-                  <div className="border-t border-cyan-500/20 pt-2 mt-2 space-y-1">
-                    <div className="flex justify-between text-cyan-400/70">
-                      <span>Weapons Mounted:</span>
-                      <span className="text-cyan-300 font-mono">{ship.weapon_count}</span>
+                    {/* Weapon / Magazine counts */}
+                    <div style={{
+                      borderTop: `1px solid ${tok.border}`,
+                      paddingTop: 8,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: 8,
+                    }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ color: tok.textDim, fontSize: 7, letterSpacing: '0.2em' }}>WEAPONS</div>
+                        <div style={{ color: tok.textBase, fontSize: 13, fontWeight: 'bold' }}>{ship.weapon_count}</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ color: tok.textDim, fontSize: 7, letterSpacing: '0.2em' }}>MAGAZINES</div>
+                        <div style={{ color: tok.textBase, fontSize: 13, fontWeight: 'bold' }}>{ship.magazine_count}</div>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-cyan-400/70">
-                      <span>Magazines:</span>
-                      <span className="text-cyan-300 font-mono">{ship.magazine_count}</span>
-                    </div>
-                    <div className="pt-2 mt-2 border-t border-cyan-500/20">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedShipId(ship.id)
-                        }}
-                        className="w-full bg-cyan-600/20 border border-cyan-500/50 text-cyan-400 px-2 py-1 font-mono text-xs rounded hover:bg-cyan-600/40 transition-colors"
-                      >
-                        VIEW DETAILS →
-                      </button>
-                    </div>
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedShipId(ship.id) }}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(4,9,5,0.8)',
+                        border: `1px solid ${tok.borderBright}`,
+                        borderLeft: `3px solid ${tok.textBase}`,
+                        color: tok.textBase,
+                        padding: '5px 0',
+                        fontSize: 9,
+                        letterSpacing: '0.25em',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#0d1f10'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(4,9,5,0.8)'}
+                    >
+                      FULL DOSSIER →
+                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          ))
+                )}
+              </div>
+            )
+          })
         )}
       </div>
 
       {/* Footer */}
-      <div className="border-t border-cyan-500/30 px-3 py-2 bg-slate-950/50">
-        <div className="text-cyan-400/60 font-mono text-xs">
-          TOTAL SHIPS: {ships.length}
-        </div>
+      <div style={{
+        borderTop: `1px solid ${tok.border}`,
+        padding: '6px 14px',
+        flexShrink: 0,
+        display: 'flex',
+        justifyContent: 'space-between',
+      }}>
+        <span style={{ color: tok.textDim, fontSize: 8, letterSpacing: '0.2em' }}>
+          VESSELS: {ships.length}
+        </span>
       </div>
     </div>
   )
